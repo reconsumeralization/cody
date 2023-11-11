@@ -329,8 +329,8 @@ importers:
         specifier: workspace:*
         version: link:../lib/shared
       axios:
-        specifier: ^1.3.6
-        version: 1.3.6
+        specifier: ^1.6.0
+        version: 1.6.0
       envalid:
         specifier: ^7.3.1
         version: 7.3.1
@@ -339,7 +339,7 @@ importers:
         version: 1.4.2
       langchain:
         specifier: ^0.0.105
-        version: 0.0.105(axios@1.3.6)(hnswlib-node@1.4.2)
+        version: 0.0.105(axios@1.6.0)(hnswlib-node@1.4.2)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -390,8 +390,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(react@18.2.0)
       axios:
-        specifier: ^1.3.6
-        version: 1.3.6
+        specifier: ^1.6.0
+        version: 1.6.0
       classnames:
         specifier: ^2.3.2
         version: 2.3.2
@@ -5984,7 +5984,7 @@ packages:
     resolution: {integrity: sha512-KqQnQbdYE54D7oa/UmYVMZKq7CO4l8DEENzOKc4aBRwxCXSlJXGz83flFx5L7AWrOQnmuN3kVsRdt+GZPPjiVQ==}
     deprecated: This is a stub types definition for axios (https://github.com/mzabriskie/axios). axios provides its own type definitions, so you don't need @types/axios installed!
     dependencies:
-      axios: 1.3.6
+      axios: 1.6.0
     transitivePeerDependencies:
       - debug
     dev: true
@@ -7408,8 +7408,8 @@ packages:
       - debug
     dev: false
 
-  /axios@1.3.6:
-    resolution: {integrity: sha512-PEcdkk7JcdPiMDkvM4K6ZBRYq9keuVJsToxm2zQIM70Qqo2WHTdJZMXcG9X+RmRp2VPNUQC8W1RAGbgt6b1yMg==}
+  /axios@1.6.0:
+    resolution: {integrity: sha512-EZ1DYihju9pwVB+jg67ogm+Tmqc6JmhamRN6I4Zt8DfZu5lbcQGw3ozH9lFejSJgs/ibaef3A9PMXPLeefFGJg==}
     dependencies:
       follow-redirects: 1.15.1
       form-data: 4.0.0
@@ -12095,7 +12095,7 @@ packages:
       - supports-color
     dev: true
 
-  /langchain@0.0.105(axios@1.3.6)(hnswlib-node@1.4.2):
+  /langchain@0.0.105(axios@1.6.0)(hnswlib-node@1.4.2):
     resolution: {integrity: sha512-iytaHWDQw6U1KG47MTeZOlzQeWGjadBWXxkf1LkmZSPnbGsgFHea/fufKcaIrhsHJn7whf7UIhuBjqu+6TjDmg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -12262,7 +12262,7 @@ packages:
     dependencies:
       '@anthropic-ai/sdk': 0.4.3
       ansi-styles: 5.2.0
-      axios: 1.3.6
+      axios: 1.6.0
       binary-extensions: 2.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
