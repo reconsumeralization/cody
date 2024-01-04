@@ -1,7 +1,8 @@
 <!--
---- Readme.md Snippet without images Start ---
+&lt;--- Readme.md Snippet without images Start ---&gt;
 ## Tech Stack
 reconsumeralization/cody is built on the following main stack:
+
 - [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
 - [Mocha](http://mochajs.org/) – Javascript Testing Framework
 - [Python](https://www.python.org) – Languages
@@ -30,11 +31,13 @@ reconsumeralization/cody is built on the following main stack:
 - [Docker](https://www.docker.com/) – Virtual Machine Platforms & Containers
 
 Full tech stack [here](/techstack.md)
---- Readme.md Snippet without images End ---
 
---- Readme.md Snippet with images Start ---
+&lt;--- Readme.md Snippet without images End ---&gt;
+
+&lt;--- Readme.md Snippet with images Start ---&gt;
 ## Tech Stack
 reconsumeralization/cody is built on the following main stack:
+
 - <img width='25' height='25' src='https://img.stackshare.io/service/191/default_9262326592c97828a2a4299dec085a3674dd05f4.png' alt='Sentry'/> [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
 - <img width='25' height='25' src='https://img.stackshare.io/service/832/mocha.png' alt='Mocha'/> [Mocha](http://mochajs.org/) – Javascript Testing Framework
 - <img width='25' height='25' src='https://img.stackshare.io/service/993/pUBY5pVj.png' alt='Python'/> [Python](https://www.python.org) – Languages
@@ -63,14 +66,15 @@ reconsumeralization/cody is built on the following main stack:
 - <img width='25' height='25' src='https://img.stackshare.io/service/586/n4u37v9t_400x400.png' alt='Docker'/> [Docker](https://www.docker.com/) – Virtual Machine Platforms & Containers
 
 Full tech stack [here](/techstack.md)
---- Readme.md Snippet with images End ---
+
+&lt;--- Readme.md Snippet with images End ---&gt;
 -->
 <div align="center">
 
 # Tech Stack File
 ![](https://img.stackshare.io/repo.svg "repo") [reconsumeralization/cody](https://github.com/reconsumeralization/cody)![](https://img.stackshare.io/public_badge.svg "public")
 <br/><br/>
-|79<br/>Tools used|11/09/23 <br/>Report generated|
+|80<br/>Tools used|01/04/24 <br/>Report generated|
 |------|------|
 </div>
 
@@ -355,9 +359,9 @@ Full tech stack [here](/techstack.md)
 </table>
 
 
-## <img src='https://img.stackshare.io/group.svg' /> Open source packages (47)</h2>
+## <img src='https://img.stackshare.io/group.svg' /> Open source packages (48)</h2>
 
-## <img width='24' height='24' src='https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png'/> npm (47)
+## <img width='24' height='24' src='https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png'/> npm (48)
 
 |NAME|VERSION|LAST UPDATED|LAST UPDATED BY|LICENSE|VULNERABILITIES|
 |:------|:------|:------|:------|:------|:------|
@@ -380,6 +384,7 @@ Full tech stack [here](/techstack.md)
 |[@types/react-dom](https://www.npmjs.com/@types/react-dom)|v18.2.7|09/01/23|renovate[bot] |MIT|N/A|
 |[@types/semver](https://www.npmjs.com/@types/semver)|v7.5.0|10/17/23|Philipp Spiess |MIT|N/A|
 |[@types/uuid](https://www.npmjs.com/@types/uuid)|v9.0.2|10/17/23|Philipp Spiess |MIT|N/A|
+|[chalk](https://www.npmjs.com/chalk)|v5.3.0|08/10/23|Rok Novosel |MIT|N/A|
 |[classnames](https://www.npmjs.com/classnames)|v2.3.2|09/04/23|Rok Novosel |MIT|N/A|
 |[commander](https://www.npmjs.com/commander)|v11.0.0|08/03/23|renovate[bot] |MIT|N/A|
 |[compression](https://www.npmjs.com/compression)|v1.7.4|07/25/23|Philipp Spiess |MIT|N/A|
@@ -412,4 +417,4 @@ Full tech stack [here](/techstack.md)
 <br/>
 <div align='center'>
 
-Generated via [Stack File](https://github.com/apps/stack-file)
+Generated via [Stack File](https://github.com/marketplace/stack-file)
