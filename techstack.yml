@@ -2,7 +2,7 @@ repo_name: reconsumeralization/cody
 report_id: 00a36ac92bd0e48e5d827f5568bc2c6c
 version: 0.1
 repo_type: Public
-timestamp: '2024-01-05T09:17:15+00:00'
+timestamp: '2024-02-29T18:12:55+00:00'
 requested_by: abeatrix
 provider: github
 branch: main
@@ -231,7 +231,7 @@ tools:
   last_updated_by: Quinn Slack
   last_updated_on: 2023-07-07 23:57:02.000000000 Z
 - name: Prettier
-  description: 'Prettier is an opinionated code formatter. '
+  description: Prettier is an opinionated code formatter.
   website_url: https://prettier.io/
   version: 3.0.3
   license: MIT
@@ -245,7 +245,7 @@ tools:
   last_updated_by: renovate[bot]
   last_updated_on: 2023-09-01 07:48:23.000000000 Z
 - name: Sentry
-  description: 'See performance issues, fix errors faster, and optimize code health. '
+  description: See performance issues, fix errors faster, and optimize code health.
   website_url: https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile
   open_source: true
   hosted_saas: true
@@ -956,6 +956,13 @@ tools:
   detection_source: agent/package.json
   last_updated_by: Ólafur Páll Geirsson
   last_updated_on: 2023-06-22 13:58:03.000000000 Z
+  vulnerabilities:
+  - name: Pkg Local Privilege Escalation
+    cve_id: CVE-2024-24828
+    cve_url: https://github.com/advisories/GHSA-22r3-9w55-cj54
+    detected_date: Feb 10
+    severity: moderate
+    first_patched: 
 - name: progress
   description: Flexible ascii progress bar
   package_url: https://www.npmjs.com/progress
