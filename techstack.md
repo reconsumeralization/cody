@@ -3,32 +3,32 @@
 ## Tech Stack
 reconsumeralization/cody is built on the following main stack:
 
-- [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
-- [Mocha](http://mochajs.org/) – Javascript Testing Framework
-- [Python](https://www.python.org) – Languages
 - [Golang](http://golang.org/) – Languages
-- [Node.js](http://nodejs.org/) – Frameworks (Full Stack)
-- [.NET](http://www.microsoft.com/net/) – Frameworks (Full Stack)
-- [React](https://reactjs.org/) – Javascript UI Libraries
-- [ExpressJS](http://expressjs.com/) – Microframeworks (Backend)
 - [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) – Languages
+- [Python](https://www.python.org) – Languages
 - [TypeScript](http://www.typescriptlang.org) – Languages
-- [Lodash](https://lodash.com) – Javascript Utilities & Libraries
-- [Sourcegraph](https://sourcegraph.com) – Code Search
-- [ESLint](http://eslint.org/) – Code Review
-- [Visual Studio Code](https://code.visualstudio.com/) – Text Editor
-- [Shell](https://en.wikipedia.org/wiki/Shell_script) – Shells
-- [Stylelint](http://stylelint.io/) – Code Review
-- [axios](https://github.com/mzabriskie/axios) – Javascript Utilities & Libraries
-- [nodemon](http://nodemon.io/) – node.js Application Monitoring
-- [highlight.js](https://highlightjs.org/) – Text Editor
-- [Prettier](https://prettier.io/) – Code Review
-- [jsdom](https://github.com/jsdom/jsdom) – Headless Browsers
+- [.NET](http://www.microsoft.com/net/) – Frameworks (Full Stack)
+- [ExpressJS](http://expressjs.com/) – Microframeworks (Backend)
+- [Node.js](http://nodejs.org/) – Frameworks (Full Stack)
+- [React](https://reactjs.org/) – Javascript UI Libraries
 - [Storybook](https://storybook.js.org/) – JavaScript Framework Components
-- [Octokit](https://github.com/octokit/octokit.net) – Tools for GitHub
-- [date-fns](https://date-fns.org/) – Javascript Utilities & Libraries
-- [GitHub Actions](https://github.com/features/actions) – Continuous Integration
 - [Docker](https://www.docker.com/) – Virtual Machine Platforms & Containers
+- [ESLint](http://eslint.org/) – Code Review
+- [GitHub Actions](https://github.com/features/actions) – Continuous Integration
+- [Mocha](http://mochajs.org/) – Javascript Testing Framework
+- [Octokit](https://github.com/octokit/octokit.net) – Tools for GitHub
+- [Prettier](https://prettier.io/) – Code Review
+- [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
+- [Sourcegraph](https://sourcegraph.com) – Code Search
+- [Stylelint](http://stylelint.io/) – Code Review
+- [Visual Studio Code](https://code.visualstudio.com/) – Text Editor
+- [highlight.js](https://highlightjs.org/) – Text Editor
+- [jsdom](https://github.com/jsdom/jsdom) – Headless Browsers
+- [nodemon](http://nodemon.io/) – node.js Application Monitoring
+- [Lodash](https://lodash.com) – Javascript Utilities & Libraries
+- [Shell](https://en.wikipedia.org/wiki/Shell_script) – Shells
+- [axios](https://github.com/mzabriskie/axios) – Javascript Utilities & Libraries
+- [date-fns](https://date-fns.org/) – Javascript Utilities & Libraries
 
 Full tech stack [here](/techstack.md)
 
@@ -38,32 +38,32 @@ Full tech stack [here](/techstack.md)
 ## Tech Stack
 reconsumeralization/cody is built on the following main stack:
 
-- <img width='25' height='25' src='https://img.stackshare.io/service/191/default_9262326592c97828a2a4299dec085a3674dd05f4.png' alt='Sentry'/> [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
-- <img width='25' height='25' src='https://img.stackshare.io/service/832/mocha.png' alt='Mocha'/> [Mocha](http://mochajs.org/) – Javascript Testing Framework
-- <img width='25' height='25' src='https://img.stackshare.io/service/993/pUBY5pVj.png' alt='Python'/> [Python](https://www.python.org) – Languages
 - <img width='25' height='25' src='https://img.stackshare.io/service/1005/O6AczwfV_400x400.png' alt='Golang'/> [Golang](http://golang.org/) – Languages
-- <img width='25' height='25' src='https://img.stackshare.io/service/1011/n1JRsFeB_400x400.png' alt='Node.js'/> [Node.js](http://nodejs.org/) – Frameworks (Full Stack)
-- <img width='25' height='25' src='https://img.stackshare.io/service/1014/IoPy1dce_400x400.png' alt='.NET'/> [.NET](http://www.microsoft.com/net/) – Frameworks (Full Stack)
-- <img width='25' height='25' src='https://img.stackshare.io/service/1020/OYIaJ1KK.png' alt='React'/> [React](https://reactjs.org/) – Javascript UI Libraries
-- <img width='25' height='25' src='https://img.stackshare.io/service/1163/hashtag.png' alt='ExpressJS'/> [ExpressJS](http://expressjs.com/) – Microframeworks (Backend)
 - <img width='25' height='25' src='https://img.stackshare.io/service/1209/javascript.jpeg' alt='JavaScript'/> [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) – Languages
+- <img width='25' height='25' src='https://img.stackshare.io/service/993/pUBY5pVj.png' alt='Python'/> [Python](https://www.python.org) – Languages
 - <img width='25' height='25' src='https://img.stackshare.io/service/1612/bynNY5dJ.jpg' alt='TypeScript'/> [TypeScript](http://www.typescriptlang.org) – Languages
-- <img width='25' height='25' src='https://img.stackshare.io/service/2438/lodash.png' alt='Lodash'/> [Lodash](https://lodash.com) – Javascript Utilities & Libraries
-- <img width='25' height='25' src='https://img.stackshare.io/service/2594/default_36eb0fa56e4e92cf1f52a44dd93a1a80b4e24a3c.png' alt='Sourcegraph'/> [Sourcegraph](https://sourcegraph.com) – Code Search
-- <img width='25' height='25' src='https://img.stackshare.io/service/3337/Q4L7Jncy.jpg' alt='ESLint'/> [ESLint](http://eslint.org/) – Code Review
-- <img width='25' height='25' src='https://img.stackshare.io/service/4202/Visual_Studio_Code_logo.png' alt='Visual Studio Code'/> [Visual Studio Code](https://code.visualstudio.com/) – Text Editor
-- <img width='25' height='25' src='https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png' alt='Shell'/> [Shell](https://en.wikipedia.org/wiki/Shell_script) – Shells
-- <img width='25' height='25' src='https://img.stackshare.io/service/5446/V9JsvPul_400x400.jpg' alt='Stylelint'/> [Stylelint](http://stylelint.io/) – Code Review
-- <img width='25' height='25' src='https://img.stackshare.io/no-img-open-source.png' alt='axios'/> [axios](https://github.com/mzabriskie/axios) – Javascript Utilities & Libraries
-- <img width='25' height='25' src='https://img.stackshare.io/service/5577/preview.png' alt='nodemon'/> [nodemon](http://nodemon.io/) – node.js Application Monitoring
-- <img width='25' height='25' src='https://img.stackshare.io/service/6888/c17e7d9688d86bd9f9506ec1fbd6d200_400x400.png' alt='highlight.js'/> [highlight.js](https://highlightjs.org/) – Text Editor
-- <img width='25' height='25' src='https://img.stackshare.io/service/7035/default_66f265943abed56bcdbfca1c866a4261b1fbb063.jpg' alt='Prettier'/> [Prettier](https://prettier.io/) – Code Review
-- <img width='25' height='25' src='https://img.stackshare.io/service/7054/preview.jpeg' alt='jsdom'/> [jsdom](https://github.com/jsdom/jsdom) – Headless Browsers
+- <img width='25' height='25' src='https://img.stackshare.io/service/1014/IoPy1dce_400x400.png' alt='.NET'/> [.NET](http://www.microsoft.com/net/) – Frameworks (Full Stack)
+- <img width='25' height='25' src='https://img.stackshare.io/service/1163/hashtag.png' alt='ExpressJS'/> [ExpressJS](http://expressjs.com/) – Microframeworks (Backend)
+- <img width='25' height='25' src='https://img.stackshare.io/service/1011/n1JRsFeB_400x400.png' alt='Node.js'/> [Node.js](http://nodejs.org/) – Frameworks (Full Stack)
+- <img width='25' height='25' src='https://img.stackshare.io/service/1020/OYIaJ1KK.png' alt='React'/> [React](https://reactjs.org/) – Javascript UI Libraries
 - <img width='25' height='25' src='https://img.stackshare.io/service/9240/sOct-Txm_400x400.png' alt='Storybook'/> [Storybook](https://storybook.js.org/) – JavaScript Framework Components
-- <img width='25' height='25' src='https://img.stackshare.io/service/9827/octokit-dotnet_2.png' alt='Octokit'/> [Octokit](https://github.com/octokit/octokit.net) – Tools for GitHub
-- <img width='25' height='25' src='https://img.stackshare.io/service/10865/default_5551fb8853689f607a2bc0d5a09355d5a3d52bf0.png' alt='date-fns'/> [date-fns](https://date-fns.org/) – Javascript Utilities & Libraries
-- <img width='25' height='25' src='https://img.stackshare.io/service/11563/actions.png' alt='GitHub Actions'/> [GitHub Actions](https://github.com/features/actions) – Continuous Integration
 - <img width='25' height='25' src='https://img.stackshare.io/service/586/n4u37v9t_400x400.png' alt='Docker'/> [Docker](https://www.docker.com/) – Virtual Machine Platforms & Containers
+- <img width='25' height='25' src='https://img.stackshare.io/service/3337/Q4L7Jncy.jpg' alt='ESLint'/> [ESLint](http://eslint.org/) – Code Review
+- <img width='25' height='25' src='https://img.stackshare.io/service/11563/actions.png' alt='GitHub Actions'/> [GitHub Actions](https://github.com/features/actions) – Continuous Integration
+- <img width='25' height='25' src='https://img.stackshare.io/service/832/mocha.png' alt='Mocha'/> [Mocha](http://mochajs.org/) – Javascript Testing Framework
+- <img width='25' height='25' src='https://img.stackshare.io/service/9827/octokit-dotnet_2.png' alt='Octokit'/> [Octokit](https://github.com/octokit/octokit.net) – Tools for GitHub
+- <img width='25' height='25' src='https://img.stackshare.io/service/7035/default_66f265943abed56bcdbfca1c866a4261b1fbb063.jpg' alt='Prettier'/> [Prettier](https://prettier.io/) – Code Review
+- <img width='25' height='25' src='https://img.stackshare.io/service/191/default_9262326592c97828a2a4299dec085a3674dd05f4.png' alt='Sentry'/> [Sentry](https://sentry.io/welcome/?utm_source=stackshare&utm_medium=link&utm_campaign=profile) – Exception Monitoring
+- <img width='25' height='25' src='https://img.stackshare.io/service/2594/default_36eb0fa56e4e92cf1f52a44dd93a1a80b4e24a3c.png' alt='Sourcegraph'/> [Sourcegraph](https://sourcegraph.com) – Code Search
+- <img width='25' height='25' src='https://img.stackshare.io/service/5446/V9JsvPul_400x400.jpg' alt='Stylelint'/> [Stylelint](http://stylelint.io/) – Code Review
+- <img width='25' height='25' src='https://img.stackshare.io/service/4202/Visual_Studio_Code_logo.png' alt='Visual Studio Code'/> [Visual Studio Code](https://code.visualstudio.com/) – Text Editor
+- <img width='25' height='25' src='https://img.stackshare.io/service/6888/c17e7d9688d86bd9f9506ec1fbd6d200_400x400.png' alt='highlight.js'/> [highlight.js](https://highlightjs.org/) – Text Editor
+- <img width='25' height='25' src='https://img.stackshare.io/service/7054/preview.jpeg' alt='jsdom'/> [jsdom](https://github.com/jsdom/jsdom) – Headless Browsers
+- <img width='25' height='25' src='https://img.stackshare.io/service/5577/preview.png' alt='nodemon'/> [nodemon](http://nodemon.io/) – node.js Application Monitoring
+- <img width='25' height='25' src='https://img.stackshare.io/service/2438/lodash.png' alt='Lodash'/> [Lodash](https://lodash.com) – Javascript Utilities & Libraries
+- <img width='25' height='25' src='https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png' alt='Shell'/> [Shell](https://en.wikipedia.org/wiki/Shell_script) – Shells
+- <img width='25' height='25' src='https://img.stackshare.io/no-img-open-source.png' alt='axios'/> [axios](https://github.com/mzabriskie/axios) – Javascript Utilities & Libraries
+- <img width='25' height='25' src='https://img.stackshare.io/service/10865/default_5551fb8853689f607a2bc0d5a09355d5a3d52bf0.png' alt='date-fns'/> [date-fns](https://date-fns.org/) – Javascript Utilities & Libraries
 
 Full tech stack [here](/techstack.md)
 
@@ -74,7 +74,7 @@ Full tech stack [here](/techstack.md)
 # Tech Stack File
 ![](https://img.stackshare.io/repo.svg "repo") [reconsumeralization/cody](https://github.com/reconsumeralization/cody)![](https://img.stackshare.io/public_badge.svg "public")
 <br/><br/>
-|80<br/>Tools used|01/05/24 <br/>Report generated|
+|80<br/>Tools used|02/29/24 <br/>Report generated|
 |------|------|
 </div>
 
@@ -403,7 +403,7 @@ Full tech stack [here](/techstack.md)
 |[morgan](https://www.npmjs.com/morgan)|v1.10.0|07/21/23|Philipp Spiess |MIT|N/A|
 |[node-fetch](https://www.npmjs.com/node-fetch)|v3.3.2|08/10/23|Rok Novosel |MIT|N/A|
 |[npm-run-all](https://www.npmjs.com/npm-run-all)|v4.1.5|07/21/23|Philipp Spiess |MIT|N/A|
-|[pkg](https://www.npmjs.com/pkg)|v5.8.1|06/22/23|Ólafur Páll Geirsson |MIT|N/A|
+|[pkg](https://www.npmjs.com/pkg)|v5.8.1|06/22/23|Ólafur Páll Geirsson |MIT|[CVE-2024-24828](https://github.com/advisories/GHSA-22r3-9w55-cj54) (Moderate)|
 |[progress](https://www.npmjs.com/progress)|v2.0.3|08/14/23|Vova Kulikov |MIT|N/A|
 |[prompts](https://www.npmjs.com/prompts)|v2.4.2|09/04/23|Quinn Slack |MIT|N/A|
 |[react-dom](https://www.npmjs.com/react-dom)|v18.2.0|07/21/23|Philipp Spiess |MIT|N/A|
