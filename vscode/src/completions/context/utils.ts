@@ -1,58 +1,36 @@
+const typeScriptFamily = new Set(['typescript', 'typescriptreact'])
+const javaScriptFamily = new Set(['javascript', 'javascriptreact'])
+
+export enum RetrieverIdentifier {
+    RecentEditsRetriever = 'recent-edits',
+    JaccardSimilarityRetriever = 'jaccard-similarity',
+    TscRetriever = 'tsc',
+    LspLightRetriever = 'lsp-light',
+    RecentCopyRetriever = 'recent-copy',
+    DiagnosticsRetriever = 'diagnostics',
+    RecentViewPortRetriever = 'recent-view-port',
+}
+
+export interface ShouldUseContextParams {
+    baseLanguageId: string
+    languageId: string
+}
+
 /**
- * Returns the base language id for the given language id. This is used to determine which language
- * IDs can be included as context for a given language ID.
- *
- * TODO(beyang): handle JavaScript <-> TypeScript and verify this works for C header files omit
- * files of other languages
+ * Returns true if the given language ID should be used as context for the base
+ * language id.
  */
-export function baseLanguageId(languageId: string): string {
-    switch (languageId) {
-        case 'typescript':
-        case 'typescriptreact':
-            return 'typescript'
-        case 'javascript':
-        case 'javascriptreact':
-            return 'javascript'
-        default:
-            return languageId
-    }
-}
-
-// On Node.js, an abort controller is implemented with the default event emitter
-// helpers which will warn when you add more than 10 event listeners. Since the
-// graph context implementation can fan out to many more concurrent requests, we
-// easily reach that limit causing a lot of noise in the console. This is a
-// lightweight abort controller implementation that does not have that limit.
-export class CustomAbortController {
-    public signal = new CustomAbortSignal()
-    public abort(): void {
-        this.signal.abort()
-    }
-}
-export class CustomAbortSignal {
-    private listeners: Set<() => void> = new Set()
-    public aborted = false
-
-    public addEventListener(eventName: 'abort', listener: () => void): void {
-        if (this.aborted) {
-            void Promise.resolve().then(() => listener())
-            return
-        }
-        this.listeners.add(listener)
+export function shouldBeUsedAsContext({ baseLanguageId, languageId }: ShouldUseContextParams): boolean {
+    if (baseLanguageId === languageId) {
+        return true
     }
 
-    public removeEventListener(listener: () => void): void {
-        this.listeners.delete(listener)
+    if (typeScriptFamily.has(baseLanguageId) && typeScriptFamily.has(languageId)) {
+        return true
+    }
+    if (javaScriptFamily.has(baseLanguageId) && javaScriptFamily.has(languageId)) {
+        return true
     }
 
-    public abort(): void {
-        if (this.aborted) {
-            return
-        }
-        this.aborted = true
-        for (const listener of this.listeners) {
-            listener()
-        }
-        this.listeners.clear()
-    }
+    return false
 }

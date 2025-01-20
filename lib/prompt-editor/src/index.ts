@@ -1,0 +1,19 @@
+export { PromptEditor, type PromptEditorRefAPI } from './PromptEditor'
+export { ContextItemMentionNode, MENTION_CLASS_NAME } from './nodes/ContextItemMentionNode'
+export { MentionMenu } from './mentions/mentionMenu/MentionMenu'
+export { BaseEditor } from './BaseEditor'
+export { PromptEditor as PromptEditorV2 } from './v2/PromptEditor'
+export { type MentionMenuParams } from './mentions/mentionMenu/useMentionMenuData'
+export {
+    ChatMentionContext,
+    type ChatMentionsSettings,
+} from './plugins/atMentions/useChatContextItems'
+export { type PromptEditorConfig, PromptEditorConfigProvider } from './config'
+export { useDefaultContextForChat } from './useInitialContext'
+export {
+    type SerializedPromptEditorState,
+    type SerializedPromptEditorValue,
+    setDisplayPathEnvInfo,
+} from '@sourcegraph/cody-shared'
+export * from './useExtensionAPI'
+export { useObservable, type UseObservableResult } from './useObservable'

@@ -1,28 +1,61 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
-import { addCustomUserAgent } from '../graphql/client'
+import { dependentAbortController } from '../../common/abortController'
+import { currentResolvedConfig } from '../../configuration/resolver'
+import { isError } from '../../utils'
+import { addClientInfoParams, addCodyClientIdentificationHeaders } from '../client-name-version'
+import { addAuthHeaders } from '../utils'
 
-import { SourcegraphCompletionsClient } from './client'
-import type { CompletionCallbacks, CompletionParameters, Event } from './types'
+import { CompletionsResponseBuilder } from './CompletionsResponseBuilder'
+import { type CompletionRequestParameters, SourcegraphCompletionsClient } from './client'
+import { parseCompletionJSON } from './parse'
+import type { CompletionCallbacks, CompletionParameters, CompletionResponse, Event } from './types'
+import { getSerializedParams } from './utils'
+
+declare const WorkerGlobalScope: never
+const isRunningInWebWorker =
+    typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope
 
 export class SourcegraphBrowserCompletionsClient extends SourcegraphCompletionsClient {
-    public stream(params: CompletionParameters, cb: CompletionCallbacks): () => void {
-        const abort = new AbortController()
-        const headersInstance = new Headers(this.config.customHeaders as HeadersInit)
-        addCustomUserAgent(headersInstance)
-        headersInstance.set('Content-Type', 'application/json; charset=utf-8')
-        if (this.config.accessToken) {
-            headersInstance.set('Authorization', `token ${this.config.accessToken}`)
+    protected async _streamWithCallbacks(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters,
+        cb: CompletionCallbacks,
+        signal?: AbortSignal
+    ): Promise<void> {
+        const { apiVersion } = requestParams
+        const serializedParams = await getSerializedParams(params)
+
+        const url = new URL(await this.completionsEndpoint())
+        if (apiVersion >= 1) {
+            url.searchParams.append('api-version', '' + apiVersion)
         }
-        const parameters = new URLSearchParams(window.location.search)
+        addClientInfoParams(url.searchParams)
+
+        const config = await currentResolvedConfig()
+
+        const abort = dependentAbortController(signal)
+        const headersInstance = new Headers({
+            ...config.configuration?.customHeaders,
+            ...requestParams.customHeaders,
+        } as HeadersInit)
+        addCodyClientIdentificationHeaders(headersInstance)
+        addAuthHeaders(config.auth, headersInstance, url)
+        headersInstance.set('Content-Type', 'application/json; charset=utf-8')
+
+        const parameters = new URLSearchParams(globalThis.location.search)
         const trace = parameters.get('trace')
         if (trace) {
             headersInstance.set('X-Sourcegraph-Should-Trace', 'true')
         }
-        fetchEventSource(this.completionsEndpoint, {
+        const builder = new CompletionsResponseBuilder(apiVersion)
+        // Disable gzip compression since the sg instance will start to batch
+        // responses afterwards.
+        headersInstance.set('Accept-Encoding', 'gzip;q=0')
+        fetchEventSource(url.toString(), {
             method: 'POST',
             headers: Object.fromEntries(headersInstance.entries()),
-            body: JSON.stringify(params),
+            body: JSON.stringify(serializedParams),
             signal: abort.signal,
             openWhenHidden: isRunningInWebWorker, // otherwise tries to call document.addEventListener
             async onopen(response) {
@@ -34,20 +67,34 @@ export class SourcegraphBrowserCompletionsClient extends SourcegraphCompletionsC
                         // We show the generic error message in this case
                         console.error(error)
                     }
-                    cb.onError(
+                    const error = new Error(
                         errorMessage === null || errorMessage.length === 0
                             ? `Request failed with status code ${response.status}`
-                            : errorMessage,
-                        response.status
+                            : errorMessage
                     )
+                    cb.onError(error, response.status)
                     abort.abort()
                     return
                 }
             },
             onmessage: message => {
                 try {
-                    const data: Event = { ...JSON.parse(message.data), type: message.event }
-                    this.sendEvents([data], cb)
+                    const events: Event[] = []
+                    if (message.event === 'completion') {
+                        const data = parseCompletionJSON(message.data)
+                        if (isError(data)) {
+                            throw data
+                        }
+                        events.push({
+                            type: 'completion',
+                            // concatenate deltas when using api-version>=2
+                            completion: builder.nextCompletion(data.completion, data.deltaText),
+                            stopReason: data.stopReason,
+                        })
+                    } else {
+                        events.push({ type: message.event, ...JSON.parse(message.data) })
+                    }
+                    this.sendEvents(events, cb)
                 } catch (error: any) {
                     cb.onError(error.message)
                     abort.abort()
@@ -63,23 +110,89 @@ export class SourcegraphBrowserCompletionsClient extends SourcegraphCompletionsC
                 // throw the error for not retrying
                 throw error
             },
+            fetch: globalThis.fetch,
         }).catch(error => {
             cb.onError(error.message)
             abort.abort()
             console.error(error)
         })
-        return () => {
-            abort.abort()
+    }
+
+    protected async _fetchWithCallbacks(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters,
+        cb: CompletionCallbacks,
+        signal?: AbortSignal
+    ): Promise<void> {
+        const { auth, configuration } = await currentResolvedConfig()
+        const { url, serializedParams } = await this.prepareRequest(params, requestParams)
+        const headersInstance = new Headers({
+            'Content-Type': 'application/json; charset=utf-8',
+            ...configuration.customHeaders,
+            ...requestParams.customHeaders,
+        })
+        addCodyClientIdentificationHeaders(headersInstance)
+        addAuthHeaders(auth, headersInstance, url)
+
+        if (new URLSearchParams(globalThis.location.search).get('trace')) {
+            headersInstance.set('X-Sourcegraph-Should-Trace', 'true')
+        }
+        try {
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: headersInstance,
+                body: JSON.stringify(serializedParams),
+                signal,
+            })
+            if (!response.ok) {
+                const errorMessage = await response.text()
+                throw new Error(
+                    errorMessage.length === 0
+                        ? `Request failed with status code ${response.status}`
+                        : errorMessage
+                )
+            }
+            const data = (await response.json()) as CompletionResponse
+            if (data?.completion) {
+                cb.onChange(data.completion)
+                cb.onComplete()
+            } else {
+                throw new Error('Unexpected response format')
+            }
+        } catch (error) {
+            console.error(error)
+            cb.onError(error instanceof Error ? error : new Error(`${error}`))
         }
     }
 }
 
-declare const WorkerGlobalScope: never
-// eslint-disable-next-line unicorn/no-typeof-undefined
-const isRunningInWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope
-
 if (isRunningInWebWorker) {
-    // HACK: @microsoft/fetch-event-source tries to call document.removeEventListener, which is not
-    // available in a worker.
-    ;(self as any).document = { removeEventListener: () => {} }
+    // NOTE: If we need to add more hacks, or if this is janky, we should consider just setting
+    // `globalThis.window = globalThis` (see
+    // https://github.com/sourcegraph/cody/pull/4047#discussion_r1593823318).
+
+    ;(self as any).document = {
+        // HACK: @microsoft/fetch-event-source tries to call document.removeEventListener, which is
+        // not available in a worker.
+        removeEventListener: () => {},
+
+        // HACK: web-tree-sitter tries to read window.document.currentScript, which fails if this is
+        // running in a Web Worker.
+        currentScript: null,
+
+        // HACK: Vite HMR client tries to call querySelectorAll, which is not
+        // available in a web worker, without this cody demo fails in dev mode.
+        querySelectorAll: () => [],
+    }
+    ;(self as any).window = {
+        // HACK: @microsoft/fetch-event-source tries to call window.clearTimeout, which fails if this is
+        // running in a Web Worker.
+        clearTimeout: (...args: Parameters<typeof clearTimeout>) => clearTimeout(...args),
+
+        document: self.document,
+    }
+    // HACK: @openctx/vscode-lib uses global object to share vscode API, it breaks cody web since
+    // global doesn't exist in web worker context, for more details see openctx issue here
+    // https://github.com/sourcegraph/openctx/issues/169
+    ;(self as any).global = {}
 }

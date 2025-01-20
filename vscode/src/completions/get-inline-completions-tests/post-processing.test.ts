@@ -1,136 +1,280 @@
 import dedent from 'dedent'
-import { describe, expect, it } from 'vitest'
+import pick from 'lodash/pick'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { range } from '../../testutils/textDocument'
-import { InlineCompletionsResultSource } from '../get-inline-completions'
-import { completion } from '../test-helpers'
+import { resetParsersCache } from '../../tree-sitter/parser'
+import { completion, initTreeSitterParser } from '../test-helpers'
 
-import { getInlineCompletions, getInlineCompletionsInsertText, params, T, V } from './helpers'
+import { T, getInlineCompletions, getInlineCompletionsInsertText, params } from './helpers'
 
-describe('[getInlineCompletions] post-processing', () => {
-    it('preserves leading whitespace when prefix has no trailing whitespace', async () =>
-        expect(
-            await getInlineCompletions(
-                params('const isLocalHost = window.location.host█', [completion`├ === 'localhost'┤`])
+const cases = [true, false]
+
+// Run truncation tests for both strategies: indentation-based and tree-sitter-based.
+// We cannot use `describe.each` here because `toMatchInlineSnapshot` is not supported with it.
+for (const isTreeSitterEnabled of cases) {
+    const label = isTreeSitterEnabled ? 'enabled' : 'disabled'
+
+    describe(`[getInlineCompletions] post-processing with tree-sitter ${label}`, () => {
+        beforeAll(async () => {
+            if (isTreeSitterEnabled) {
+                await initTreeSitterParser()
+            }
+        })
+
+        afterAll(() => {
+            resetParsersCache()
+        })
+
+        it('preserves leading whitespace when prefix has no trailing whitespace', async () =>
+            expect(
+                await getInlineCompletionsInsertText(
+                    params('const isLocalHost = window.location.host█', [completion`├ === 'localhost'┤`])
+                )
+            ).toEqual([" === 'localhost'"]))
+
+        it('collapses leading whitespace when prefix has trailing whitespace', async () =>
+            expect(
+                await getInlineCompletionsInsertText(params('const x = █', [completion`├${T}1337┤`]))
+            ).toEqual(['1337']))
+
+        describe('bad completion starts', () => {
+            it.each([
+                [completion`├➕     foo┤`, 'foo'],
+                [completion`├${'\u200B'}   foo┤`, 'foo'],
+                [completion`├.      foo┤`, 'foo'],
+                [completion`├+  foo┤`, 'foo'],
+                [completion`├-  foo┤`, 'foo'],
+            ])('fixes %s to %s', async (completion, expected) =>
+                expect(await getInlineCompletionsInsertText(params('█', [completion]))).toEqual([
+                    expected,
+                ])
             )
-        ).toEqual<V>({
-            items: [{ insertText: " === 'localhost'" }],
-            source: InlineCompletionsResultSource.Network,
-        }))
+        })
 
-    it('collapses leading whitespace when prefix has trailing whitespace', async () =>
-        expect(await getInlineCompletions(params('const x = █', [completion`├${T}1337┤`]))).toEqual<V>({
-            items: [{ insertText: '1337' }],
-            source: InlineCompletionsResultSource.Network,
-        }))
+        describe('odd indentation', () => {
+            it('filters out odd indentation in single-line completions', async () =>
+                expect(
+                    await getInlineCompletionsInsertText(params('const foo = █', [completion`├ 1337┤`]))
+                ).toEqual(['1337']))
+        })
 
-    describe('bad completion starts', () => {
-        it.each([
-            [completion`├➕     foo┤`, 'foo'],
-            [completion`├${'\u200B'}   foo┤`, 'foo'],
-            [completion`├.      foo┤`, 'foo'],
-            [completion`├+  foo┤`, 'foo'],
-            [completion`├-  foo┤`, 'foo'],
-        ])('fixes %s to %s', async (completion, expected) =>
-            expect(await getInlineCompletions(params('█', [completion]))).toEqual<V>({
-                items: [{ insertText: expected }],
-                source: InlineCompletionsResultSource.Network,
-            })
-        )
-    })
-
-    describe('odd indentation', () => {
-        it('filters out odd indentation in single-line completions', async () =>
-            expect(await getInlineCompletions(params('const foo = █', [completion`├ 1337┤`]))).toEqual<V>({
-                items: [{ insertText: '1337' }],
-                source: InlineCompletionsResultSource.Network,
-            }))
-    })
-
-    it('ranks results by number of lines', async () => {
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
+        it('ranks results by number of lines', async () => {
+            const items = await getInlineCompletionsInsertText(
+                params(
+                    dedent`
                     function it() {
                         █
                 `,
-                [
-                    completion`
+                    [
+                        completion`
                         ├console.log('foo')
                         console.log('foo')┤
                     ┴┴┴┴
                     `,
-                    completion`
+                        completion`
                         ├console.log('foo')
                         console.log('foo')
                         console.log('foo')
                         console.log('foo')
                         console.log('foo')┤
                     ┴┴┴┴`,
-                    completion`
+                        completion`
                         ├console.log('foo')┤
                     `,
-                ]
-            )
-        )
-
-        expect(items[0]).toMatchInlineSnapshot(`
-              "console.log('foo')
-                  console.log('foo')
-                  console.log('foo')
-                  console.log('foo')
-                  console.log('foo')"
-            `)
-        expect(items[1]).toMatchInlineSnapshot(`
-              "console.log('foo')
-                  console.log('foo')"
-            `)
-        expect(items[2]).toBe("console.log('foo')")
-    })
-
-    it('dedupes duplicate results', async () => {
-        expect(
-            await getInlineCompletionsInsertText(
-                params(
-                    dedent`
-                    function it() {
-                        █
-                `,
-                    [completion`return true`, completion`return true`, completion`return true`]
-                )
-            )
-        ).toEqual(['return true'])
-    })
-
-    // c.f. https://github.com/sourcegraph/cody/issues/872
-    it('removes single character completions', async () => {
-        expect(
-            await getInlineCompletionsInsertText(
-                params(
-                    dedent`
-                        function it() {
-                            █
-                    `,
-                    [completion`}`]
-                )
-            )
-        ).toEqual([])
-    })
-
-    it('removes appends the injected prefix to the completion response since this is not sent to the LLM', async () => {
-        expect(
-            await getInlineCompletionsInsertText(
-                params(
-                    dedent`
-                        console.l█
-                    `,
-                    [completion`('hello world')`],
+                    ],
                     {
-                        takeSuggestWidgetSelectionIntoAccount: true,
-                        selectedCompletionInfo: { text: 'log', range: range(0, 8, 0, 9) },
+                        numberOfCompletionsToGenerate: 3,
                     }
                 )
             )
-        ).toEqual(["og('hello world')"])
+
+            expect(items[0]).toMatchInlineSnapshot(`
+              "console.log('foo')
+                  console.log('foo')
+                  console.log('foo')
+                  console.log('foo')
+                  console.log('foo')"
+            `)
+            expect(items[1]).toMatchInlineSnapshot(`
+              "console.log('foo')
+                  console.log('foo')"
+            `)
+            expect(items[2]).toBe("console.log('foo')")
+        })
+
+        it('dedupes duplicate results', async () => {
+            expect(
+                await getInlineCompletionsInsertText(
+                    params(
+                        dedent`
+                    function it() {
+                        █
+                `,
+                        [completion`return true`, completion`return true`, completion`return true`]
+                    )
+                )
+            ).toEqual(['return true'])
+        })
+
+        // c.f. https://github.com/sourcegraph/cody/issues/872
+        it('removes single character completions', async () => {
+            expect(
+                await getInlineCompletionsInsertText(
+                    params(
+                        dedent`
+                        function it() {
+                            █
+                    `,
+                        [completion`}`]
+                    )
+                )
+            ).toEqual([])
+        })
+
+        // c.f. https://github.com/sourcegraph/cody/issues/2912
+        it('removes prompt-continuations', async () => {
+            expect(
+                await getInlineCompletionsInsertText(
+                    params(
+                        dedent`
+                        function it() {
+                            █
+                    `,
+                        [
+                            // Anthropic-style prompts
+                            completion`\nHuman: Here is some more context code to provide`,
+                            // StarCoder style context snippet
+                            completion`// Path: foo.ts`,
+                            completion`# Path: foo.ts`,
+                        ]
+                    )
+                )
+            ).toEqual([])
+        })
+
+        it('removes appends the injected prefix to the completion response since this is not sent to the LLM', async () => {
+            expect(
+                await getInlineCompletionsInsertText(
+                    params(
+                        dedent`
+                        console.l█
+                    `,
+                        [completion`('hello world')`],
+                        {
+                            takeSuggestWidgetSelectionIntoAccount: true,
+                            selectedCompletionInfo: { text: 'log', range: range(0, 8, 0, 9) },
+                        }
+                    )
+                )
+            ).toEqual(["og('hello world')"])
+        })
+
+        if (isTreeSitterEnabled) {
+            async function getCompletionItems(code: string, completions: string[]) {
+                const completionResult = await getInlineCompletions(
+                    params(
+                        dedent(code),
+                        completions.map(completion => ({
+                            completion,
+                            stopReason: 'unknown',
+                        })),
+                        {
+                            numberOfCompletionsToGenerate: 3,
+                        }
+                    )
+                )
+
+                if (completionResult?.items) {
+                    return completionResult.items
+                }
+
+                throw new Error('Expected to have `items` in a `completionResult`')
+            }
+
+            it('adds parse info to single-line completions', async () => {
+                const completions = await getCompletionItems('function sort(█', [
+                    'array) {}',
+                    'array new',
+                ])
+
+                expect(completions.map(c => Boolean(c.parseErrorCount))).toEqual([false, true])
+            })
+
+            it('respects completion insert ranges', async () => {
+                const completions = await getCompletionItems('function sort(█)', [
+                    'array) {}',
+                    'array new',
+                ])
+
+                expect(completions.map(c => Boolean(c.parseErrorCount))).toEqual([false, true])
+            })
+
+            it('adds parse info to multi-line completions', async () => {
+                const completions = await getCompletionItems(
+                    `
+                        function hello() {
+                            alert('hello world!')
+                        }
+
+                        const one = []; function sort(█)
+                    `,
+                    ['array) {\nreturn array.sort()\n} function two() {}', 'array) new\n']
+                )
+                const [completion] = completions.map(c =>
+                    pick(c, ['insertText', 'nodeTypes', 'nodeTypesWithCompletion', 'parseErrorCount'])
+                )
+
+                expect(completion).toMatchInlineSnapshot(`
+                  {
+                    "insertText": "array) {
+                  return array.sort()
+                  }",
+                    "nodeTypes": {
+                      "atCursor": "(",
+                      "grandparent": "function_signature",
+                      "greatGrandparent": "program",
+                      "lastAncestorOnTheSameLine": "program",
+                      "parent": "formal_parameters",
+                    },
+                    "nodeTypesWithCompletion": {
+                      "atCursor": "(",
+                      "grandparent": "function_declaration",
+                      "greatGrandparent": "program",
+                      "lastAncestorOnTheSameLine": "function_declaration",
+                      "parent": "formal_parameters",
+                    },
+                    "parseErrorCount": 0,
+                  }
+                `)
+            })
+
+            it('adds parse info to single-line completions', async () => {
+                const [item] = await getCompletionItems('const one = █', ['"one"'])
+
+                expect(
+                    pick(item, ['insertText', 'nodeTypes', 'nodeTypesWithCompletion', 'parseErrorCount'])
+                ).toMatchInlineSnapshot(`
+                      {
+                        "insertText": ""one"",
+                        "nodeTypes": {
+                          "atCursor": "program",
+                          "grandparent": undefined,
+                          "greatGrandparent": undefined,
+                          "lastAncestorOnTheSameLine": "program",
+                          "parent": undefined,
+                        },
+                        "nodeTypesWithCompletion": {
+                          "atCursor": "variable_declarator",
+                          "grandparent": "program",
+                          "greatGrandparent": undefined,
+                          "lastAncestorOnTheSameLine": "lexical_declaration",
+                          "parent": "lexical_declaration",
+                        },
+                        "parseErrorCount": 0,
+                      }
+                    `)
+            })
+        }
     })
-})
+}

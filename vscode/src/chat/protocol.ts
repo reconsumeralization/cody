@@ -1,12 +1,52 @@
-import { ChatContextStatus } from '@sourcegraph/cody-shared/src/chat/context'
-import { CodyPrompt, CustomCommandType } from '@sourcegraph/cody-shared/src/chat/prompts'
-import { RecipeID } from '@sourcegraph/cody-shared/src/chat/recipes/recipe'
-import { ChatMessage, UserLocalHistory } from '@sourcegraph/cody-shared/src/chat/transcript/messages'
-import { Configuration } from '@sourcegraph/cody-shared/src/configuration'
-import { CodyLLMSiteConfiguration } from '@sourcegraph/cody-shared/src/sourcegraph-api/graphql/client'
-import type { TelemetryEventProperties } from '@sourcegraph/cody-shared/src/telemetry'
+import type {
+    AuthCredentials,
+    AuthStatus,
+    ChatMessage,
+    ClientCapabilitiesWithLegacyFields,
+    ClientConfiguration,
+    CodyClientConfig,
+    CodyIDE,
+    ContextItem,
+    ContextItemSource,
+    NLSSearchDynamicFilter,
+    ProcessingStep,
+    PromptMode,
+    RangeData,
+    RequestMessage,
+    ResponseMessage,
+    SerializedChatMessage,
+    UserProductSubscription,
+} from '@sourcegraph/cody-shared'
 
-import { View } from '../../webviews/NavBar'
+import type { BillingCategory, BillingProduct } from '@sourcegraph/cody-shared/src/telemetry-v2'
+
+import type { TelemetryEventParameters } from '@sourcegraph/telemetry'
+
+import type { Uri } from 'vscode'
+import type { View } from '../../webviews/tabs/types'
+import type { FixupTaskID } from '../non-stop/FixupTask'
+import type { CodyTaskState } from '../non-stop/state'
+
+/**
+ * DO NOT USE DIRECTLY - ALWAYS USE a TelemetryRecorder from
+ * createWebviewTelemetryRecorder instead in webviews.
+ *
+ * V2 telemetry RPC parameter type for webviews.
+ */
+export type WebviewRecordEventParameters = TelemetryEventParameters<
+    // 👷 HACK:  We use looser string types instead of the actual SDK at
+    // '@sourcegraph/cody-shared/src/telemetry-v2' because this defines a
+    // wire protocol where the stricter type-checking is pointless. Do not
+    // do this elsewhere!
+    { [key: string]: number },
+    BillingProduct,
+    BillingCategory
+>
+
+/**
+ * The location of where the webview is displayed.
+ */
+export type WebviewType = 'sidebar' | 'editor'
 
 /**
  * A message sent from the webview to the extension host.
@@ -14,201 +54,266 @@ import { View } from '../../webviews/NavBar'
 export type WebviewMessage =
     | { command: 'ready' }
     | { command: 'initialized' }
-    | { command: 'event'; eventName: string; properties: TelemetryEventProperties | undefined } // new event log internal API (use createWebviewTelemetryService wrapper)
-    | { command: 'submit'; text: string; submitType: 'user' | 'suggestion' | 'example' }
-    | { command: 'executeRecipe'; recipe: RecipeID }
-    | { command: 'history'; action: 'clear' | 'export' }
-    | { command: 'restoreHistory'; chatID: string }
-    | { command: 'deleteHistory'; chatID: string }
-    | { command: 'links'; value: string }
-    | { command: 'openFile'; filePath: string }
     | {
-          command: 'openLocalFileWithRange'
-          filePath: string
-          // Note: we're not using vscode.Range objects or nesting here, as the protocol
-          // tends ot munge the type in a weird way (nested fields become array indices).
-          range?: { startLine: number; startCharacter: number; endLine: number; endCharacter: number }
+          /**
+           * DO NOT USE DIRECTLY - ALWAYS USE a TelemetryRecorder from
+           * createWebviewTelemetryRecorder instead for webviews.
+           *
+           * V2 telemetry RPC for the webview.
+           */
+          command: 'recordEvent'
+          // 👷 HACK: WARNING: We use looser string types instead of the actual SDK at
+          // '@sourcegraph/cody-shared/src/telemetry-v2' because this defines a
+          // wire protocol where the stricter type-checking is pointless. Do not
+          // do this elsewhere!
+          feature: string
+          action: string
+          parameters: WebviewRecordEventParameters
       }
-    | { command: 'edit'; text: string }
-    | { command: 'insert'; text: string; source?: string }
-    | { command: 'newFile'; text: string; source?: string }
-    | { command: 'copy'; eventType: 'Button' | 'Keydown'; text: string; source?: string }
+    | ({ command: 'submit' } & WebviewSubmitMessage)
+    | { command: 'restoreHistory'; chatID: string }
+    | { command: 'links'; value: string }
+    | { command: 'openURI'; uri: Uri }
+    | { command: 'openRemoteFile'; uri: Uri }
+    | {
+          command: 'openFileLink'
+          uri: Uri
+          range?: RangeData | undefined | null
+          source?: ContextItemSource | undefined | null
+      }
+    | {
+          command: 'show-page'
+          page: string
+      }
+    | { command: 'command'; id: string; arg?: string | undefined | null }
+    | ({ command: 'edit' } & WebviewEditMessage)
+    | { command: 'insert'; text: string }
+    | { command: 'newFile'; text: string }
+    | {
+          command: 'copy'
+          eventType: 'Button' | 'Keydown'
+          text: string
+      }
+    | {
+          command: 'smartApplySubmit'
+          id: FixupTaskID
+          code: string
+          instruction?: string | undefined | null
+          fileName?: string | undefined | null
+          traceparent?: string | undefined | null
+      }
+    | {
+          command: 'trace-export'
+          // The traceSpan is a JSON-encoded string representing the trace data.
+          traceSpanEncodedJson: string
+      }
+    | {
+          command: 'smartApplyAccept'
+          id: FixupTaskID
+      }
+    | {
+          command: 'smartApplyReject'
+          id: FixupTaskID
+      }
     | {
           command: 'auth'
-          type:
-              | 'signin'
-              | 'signout'
-              | 'support'
-              | 'app'
-              | 'callback'
-              | 'simplified-onboarding'
-              | 'simplified-onboarding-exposure'
-          endpoint?: string
-          value?: string
-          authMethod?: AuthMethod
+          authKind: 'signin' | 'signout' | 'support' | 'callback' | 'simplified-onboarding' | 'switch'
+          endpoint?: string | undefined | null
+          value?: string | undefined | null
+          authMethod?: AuthMethod | undefined | null
       }
     | { command: 'abort' }
-    | { command: 'custom-prompt'; title: string; value?: CustomCommandType }
-    | { command: 'reload' }
     | {
           command: 'simplified-onboarding'
-          type: 'install-app' | 'open-app' | 'reload-state'
+          onboardingKind: 'web-sign-in-token'
       }
+    | {
+          command: 'attribution-search'
+          snippet: string
+      }
+    | { command: 'rpc/request'; message: RequestMessage }
+    | {
+          command: 'chatSession'
+          action: 'duplicate' | 'new'
+          sessionID?: string | undefined | null
+      }
+    | {
+          command: 'log'
+          level: 'debug' | 'error'
+          filterLabel: string
+          message: string
+      }
+    | {
+          command: 'reevaluateSearchWithSelectedFilters'
+          index: number
+          selectedFilters: NLSSearchDynamicFilter[]
+      }
+    | { command: 'action/confirmation'; id: string; response: boolean }
+
+export interface SmartApplyResult {
+    taskId: FixupTaskID
+    taskState: CodyTaskState
+}
 
 /**
  * A message sent from the extension host to the webview.
  */
 export type ExtensionMessage =
-    | { type: 'config'; config: ConfigurationSubsetForWebview & LocalEnv; authStatus: AuthStatus }
-    | { type: 'login'; authStatus: AuthStatus }
-    | { type: 'history'; messages: UserLocalHistory | null }
-    | { type: 'transcript'; messages: ChatMessage[]; isMessageInProgress: boolean }
-    | { type: 'contextStatus'; contextStatus: ChatContextStatus }
-    | { type: 'view'; messages: View }
+    | {
+          type: 'config'
+          config: ConfigurationSubsetForWebview & LocalEnv
+          clientCapabilities: ClientCapabilitiesWithLegacyFields
+          authStatus: AuthStatus
+          userProductSubscription?: UserProductSubscription | null | undefined
+          isDotComUser: boolean
+          workspaceFolderUris: string[]
+      }
+    | {
+          type: 'clientConfig'
+          clientConfig?: CodyClientConfig | null | undefined
+      }
+    | {
+          /** Used by JetBrains and not VS Code. */
+          type: 'ui/theme'
+          agentIDE: CodyIDE
+          cssVariables: CodyIDECssVariables
+      }
+    | ({ type: 'transcript' } & ExtensionTranscriptMessage)
+    | { type: 'view'; view: View }
     | { type: 'errors'; errors: string }
-    | { type: 'suggestions'; suggestions: string[] }
-    | { type: 'app-state'; isInstalled: boolean }
-    | { type: 'notice'; notice: { key: string } }
-    | { type: 'custom-prompts'; prompts: [string, CodyPrompt][] }
-    | { type: 'transcript-errors'; isTranscriptError: boolean }
+    | {
+          type: 'clientAction'
+          addContextItemsToLastHumanInput?: ContextItem[] | null | undefined
+          appendTextToLastPromptEditor?: string | null | undefined
+          setLastHumanInputIntent?: ChatMessage['intent'] | null | undefined
+          smartApplyResult?: SmartApplyResult | undefined | null
+          submitHumanInput?: boolean | undefined | null
+          setPromptAsInput?:
+              | { text: string; mode?: PromptMode | undefined | null; autoSubmit: boolean }
+              | undefined
+              | null
+      }
+    | ({ type: 'attribution' } & ExtensionAttributionMessage)
+    | { type: 'rpc/response'; message: ResponseMessage }
+    | { type: 'action/confirmationRequest'; id: string; step: ProcessingStep }
+
+interface ExtensionAttributionMessage {
+    snippet: string
+    attribution?:
+        | {
+              repositoryNames: string[]
+              limitHit: boolean
+          }
+        | undefined
+        | null
+    error?: string | undefined | null
+}
+
+export interface WebviewSubmitMessage extends WebviewContextMessage {
+    text: string
+
+    /** An opaque value representing the text editor's state. @see {ChatMessage.editorState} */
+    editorState?: unknown | undefined | null
+    preDetectedIntent?: ChatMessage['intent'] | undefined | null
+    preDetectedIntentScores?: { intent: string; score: number }[] | undefined | null
+    manuallySelectedIntent?: ChatMessage['intent'] | undefined | null
+    traceparent?: string | undefined | null
+    steps?: ProcessingStep[] | undefined | null
+}
+
+interface WebviewEditMessage extends WebviewContextMessage {
+    text: string
+    index?: number | undefined | null
+
+    /** An opaque value representing the text editor's state. @see {ChatMessage.editorState} */
+    editorState?: unknown | undefined | null
+    preDetectedIntent?: ChatMessage['intent'] | undefined | null
+    preDetectedIntentScores?: { intent: string; score: number }[] | undefined | null
+    manuallySelectedIntent?: ChatMessage['intent'] | undefined | null
+    steps?: ProcessingStep[] | undefined | null
+}
+
+interface WebviewContextMessage {
+    contextItems?: ContextItem[] | undefined | null
+}
+
+export interface ExtensionTranscriptMessage {
+    messages: SerializedChatMessage[]
+    isMessageInProgress: boolean
+    chatID: string
+}
 
 /**
  * The subset of configuration that is visible to the webview.
  */
 export interface ConfigurationSubsetForWebview
-    extends Pick<Configuration, 'debugEnable' | 'serverEndpoint'>,
-        Experiments {}
+    extends Pick<ClientConfiguration, 'experimentalNoodle' | 'internalDebugContext'>,
+        Pick<AuthCredentials, 'serverEndpoint'> {
+    smartApply: boolean
+    hasEditCapability: boolean
+    // Type/location of the current webview.
+    webviewType?: WebviewType | undefined | null
+    // Whether support running multiple webviews (e.g. sidebar w/ multiple editor panels).
+    multipleWebviewsEnabled?: boolean | undefined | null
+    endpointHistory?: string[] | undefined | null
+    allowEndpointChange: boolean
+}
 
 /**
  * URLs for the Sourcegraph instance and app.
  */
-export const DOTCOM_CALLBACK_URL = new URL('https://sourcegraph.com/user/settings/tokens/new/callback')
-export const CODY_DOC_URL = new URL('https://docs.sourcegraph.com/cody')
-
+export const CODY_DOC_URL = new URL('https://sourcegraph.com/docs/cody')
+export const SG_CHANGELOG_URL = new URL('https://sourcegraph.com/changelog')
+export const VSCODE_CHANGELOG_URL = new URL(
+    'https://github.com/sourcegraph/cody/blob/main/vscode/CHANGELOG.md'
+)
+// Docs
+export const CODY_DOCS_CAPABILITIES_URL = new URL('https://sourcegraph.com/docs/cody/capabilities')
+export const CODY_DOCS_AGENTIC_CHAT_URL = new URL('agentic-chat', CODY_DOCS_CAPABILITIES_URL)
 // Community and support
 export const DISCORD_URL = new URL('https://discord.gg/s2qDtYGnAE')
-export const CODY_FEEDBACK_URL = new URL(
-    'https://github.com/sourcegraph/cody/discussions/new?category=product-feedback&labels=vscode'
+export const CODY_FEEDBACK_URL = new URL('https://github.com/sourcegraph/cody/issues/new/choose')
+export const CODY_SUPPORT_URL = new URL('https://srcgr.ph/cody-support')
+export const CODY_OLLAMA_DOCS_URL = new URL(
+    'https://sourcegraph.com/docs/cody/clients/install-vscode#supported-local-ollama-models-with-cody'
 )
-// APP
-export const APP_LANDING_URL = new URL('https://about.sourcegraph.com/app')
-export const APP_CALLBACK_URL = new URL('sourcegraph://user/settings/tokens/new/callback')
-export const APP_REPOSITORIES_URL = new URL('sourcegraph://users/admin/app-settings/local-repositories')
+// Account
+export const ENTERPRISE_PRICING_URL = new URL('https://sourcegraph.com/pricing')
+export const CODY_PRO_SUBSCRIPTION_URL = new URL('https://accounts.sourcegraph.com/cody/subscription')
+export const ACCOUNT_UPGRADE_URL = new URL('https://sourcegraph.com/cody/subscription')
+export const ACCOUNT_USAGE_URL = new URL('https://sourcegraph.com/cody/manage')
+export const ACCOUNT_LIMITS_INFO_URL = new URL(
+    'https://sourcegraph.com/docs/cody/troubleshooting#autocomplete-rate-limits'
+)
+// TODO: Update this URL to the correct one when the Cody model waitlist is available
+export const CODY_BLOG_URL_o1_WAITLIST = new URL('https://sourcegraph.com/blog/openai-o1-for-cody')
 
-/**
- * The status of a users authentication, whether they're authenticated and have a
- * verified email.
- */
-export interface AuthStatus {
-    username?: string
-    endpoint: string | null
-    isLoggedIn: boolean
-    showInvalidAccessTokenError: boolean
-    authenticated: boolean
-    hasVerifiedEmail: boolean
-    requiresVerifiedEmail: boolean
-    siteHasCodyEnabled: boolean
-    siteVersion: string
-    configOverwrites?: CodyLLMSiteConfiguration
-    showNetworkError?: boolean
-}
-
-export const defaultAuthStatus = {
-    endpoint: '',
-    isLoggedIn: false,
-    showInvalidAccessTokenError: false,
-    authenticated: false,
-    hasVerifiedEmail: false,
-    requiresVerifiedEmail: false,
-    siteHasCodyEnabled: false,
-    siteVersion: '',
-}
-
-export const unauthenticatedStatus = {
-    endpoint: '',
-    isLoggedIn: false,
-    showInvalidAccessTokenError: true,
-    authenticated: false,
-    hasVerifiedEmail: false,
-    requiresVerifiedEmail: false,
-    siteHasCodyEnabled: false,
-    siteVersion: '',
-}
-
-export const networkErrorAuthStatus = {
-    showInvalidAccessTokenError: false,
-    authenticated: false,
-    isLoggedIn: false,
-    hasVerifiedEmail: false,
-    showNetworkError: true,
-    requiresVerifiedEmail: false,
-    siteHasCodyEnabled: false,
-    siteVersion: '',
-}
-
-export interface Experiments {
-    experimentOnboarding: OnboardingExperimentArm
-}
+// TODO: Update to live link https://linear.app/sourcegraph/issue/CORE-535/cody-clients-migrate-ctas-to-live-links
+export const DOTCOM_WORKSPACE_LEARN_MORE_URL = new URL('https://sourcegraph.com/docs')
 
 /** The local environment of the editor. */
 export interface LocalEnv {
-    // The operating system kind
-    os: string
-    arch: string
-    homeDir?: string | undefined
-
-    // The URL scheme the editor is registered to in the operating system
-    uriScheme: string
-    // The application name of the editor
-    appName: string
-    extensionVersion: string
-
     /** Whether the extension is running in VS Code Web (as opposed to VS Code Desktop). */
     uiKindIsWeb: boolean
-
-    // App Local State
-    hasAppJson: boolean
-    isAppInstalled: boolean
-    isAppRunning: boolean
 }
-
-export function isLoggedIn(authStatus: AuthStatus): boolean {
-    if (!authStatus.siteHasCodyEnabled) {
-        return false
-    }
-    return authStatus.authenticated && (authStatus.requiresVerifiedEmail ? authStatus.hasVerifiedEmail : true)
-}
-
-// The OS and Arch support for Cody app
-export function isOsSupportedByApp(os?: string, arch?: string): boolean {
-    if (!os || !arch) {
-        return false
-    }
-    return os === 'darwin' || os === 'linux'
-}
-
-// Map the Arch to the app's supported Arch
-export function archConvertor(arch: string): string {
-    switch (arch) {
-        case 'arm64':
-            return 'aarch64'
-        case 'x64':
-            return 'x86_64'
-    }
-    return arch
-}
-
-// Simplified Onboarding types which are shared between WebView and extension.
 
 export type AuthMethod = 'dotcom' | 'github' | 'gitlab' | 'google'
 
-export enum OnboardingExperimentArm {
-    // Note, these values are persisted to local storage, see pickArm. Do not
-    // change these values. Adding values is OK but don't delete them.
-    Classic = 0, // Control
-    Simplified = 1, // Treatment: simplified onboarding flow
+// Provide backward compatibility for the old token regex
+// Details: https://docs.sourcegraph.com/dev/security/secret_formats
+const sourcegraphTokenRegex =
+    /(sgp_(?:[a-fA-F0-9]{16}|local)|sgp_)?[a-fA-F0-9]{40}|(sgd|slk|sgs)_[a-fA-F0-9]{64}/
 
-    MinValue = Classic,
-    // Update this when adding an arm to the trial.
-    MaxValue = Simplified,
+/**
+ * Checks if the given text matches the regex for a Sourcegraph access token.
+ *
+ * @param text - The text to check against the regex.
+ * @returns Whether the text matches the Sourcegraph token regex.
+ */
+export function isSourcegraphToken(text: string): boolean {
+    return sourcegraphTokenRegex.test(text)
+}
+
+interface CodyIDECssVariables {
+    [key: string]: string
 }

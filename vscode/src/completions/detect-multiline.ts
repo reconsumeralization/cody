@@ -1,94 +1,176 @@
-import * as vscode from 'vscode'
+import { Position } from 'vscode'
 
-import { DocumentContext } from './get-current-doc-context'
-import { getLanguageConfig } from './language'
+import { addAutocompleteDebugEvent } from '../services/open-telemetry/debug-utils'
+import { getLanguageConfig } from '../tree-sitter/language'
+
+import type { DocumentDependentContext, LinesContext } from '@sourcegraph/cody-shared'
 import {
     FUNCTION_KEYWORDS,
     FUNCTION_OR_METHOD_INVOCATION_REGEX,
-    indentation,
     OPENING_BRACKET_REGEX,
+    getLastLine,
+    indentation,
+    lines,
 } from './text-processing'
-import { getCachedParseTreeForDocument } from './tree-sitter/parse-tree-cache'
-import { getDocumentQuerySDK } from './tree-sitter/query-sdk'
 
 interface DetectMultilineParams {
-    docContext: Omit<DocumentContext, 'multilineTrigger'>
-    document: vscode.TextDocument
-    enableExtendedTriggers: boolean
-    syntacticTriggers?: boolean
+    docContext: LinesContext & DocumentDependentContext
+    languageId: string
+    position: Position
 }
 
-export function detectMultiline(params: DetectMultilineParams): string | null {
-    const { syntacticTriggers, docContext, document, enableExtendedTriggers } = params
-    const { prefix, prevNonEmptyLine, nextNonEmptyLine, currentLinePrefix, currentLineSuffix } = docContext
+interface DetectMultilineResult {
+    multilineTrigger: string | null
+    multilineTriggerPosition: Position | null
+}
 
-    const parseTreeCache = getCachedParseTreeForDocument(document)
-    const documentQuerySDK = getDocumentQuerySDK(document.languageId)
-    const blockStart = getLanguageConfig(document.languageId)?.blockStart
-    const isBlockStartActive = blockStart && prefix.trimEnd().endsWith(blockStart)
+export function endsWithBlockStart(text: string, languageId: string): string | null {
+    const blockStart = getLanguageConfig(languageId)?.blockStart
+    return blockStart && text.trimEnd().endsWith(blockStart) ? blockStart : null
+}
 
-    if (syntacticTriggers && parseTreeCache && documentQuerySDK && isBlockStartActive) {
-        const triggerPosition = document.positionAt(docContext.prefix.lastIndexOf(blockStart))
+// Languages with more than 100 multiline completions in the last month and CAR > 20%:
+// https://sourcegraph.looker.com/explore/sourcegraph/cody?qid=JBItVt6VFMlCtMa9KOBmjh&origin_space=562
+const LANGUAGES_WITH_MULTILINE_SUPPORT = [
+    'astro',
+    'c',
+    'cpp',
+    'csharp',
+    'css',
+    'dart',
+    'elixir',
+    'go',
+    'html',
+    'java',
+    'javascript',
+    'javascriptreact',
+    'kotlin',
+    'php',
+    'python',
+    'rust',
+    'svelte',
+    'typescript',
+    'typescriptreact',
+    'vue',
+]
 
-        const queryStartPoint = {
-            row: triggerPosition.line,
-            column: triggerPosition.character,
-        }
+export function detectMultiline(params: DetectMultilineParams): DetectMultilineResult {
+    const { docContext, languageId, position } = params
+    const { prefix, prevNonEmptyLine, nextNonEmptyLine, currentLinePrefix, currentLineSuffix } =
+        docContext
+    const isMultilineSupported = LANGUAGES_WITH_MULTILINE_SUPPORT.includes(languageId)
 
-        const queryEndPoint = {
-            row: triggerPosition.line,
-            // Querying around one character after trigger position.
-            column: triggerPosition.character + 1,
-        }
+    const blockStart = endsWithBlockStart(prefix, languageId)
+    const isBlockStartActive = Boolean(blockStart)
 
-        const singleLineTriggers = documentQuerySDK.queries.singlelineTriggers.getEnclosingTrigger(
-            parseTreeCache.tree.rootNode,
-            queryStartPoint,
-            queryEndPoint
-        )
-
-        // Don't trigger multiline completion if single line trigger is found.
-        if (singleLineTriggers.length > 0) {
-            return null
-        }
-    }
-
-    const checkInvocation =
+    const currentLineText =
         currentLineSuffix.trim().length > 0 ? currentLinePrefix + currentLineSuffix : currentLinePrefix
+
+    const isMethodOrFunctionInvocation =
+        !currentLinePrefix.trim().match(FUNCTION_KEYWORDS) &&
+        currentLineText.match(FUNCTION_OR_METHOD_INVOCATION_REGEX)
 
     // Don't fire multiline completion for method or function invocations
     // see https://github.com/sourcegraph/cody/discussions/358#discussioncomment-6519606
-    if (
-        !currentLinePrefix.trim().match(FUNCTION_KEYWORDS) &&
-        checkInvocation.match(FUNCTION_OR_METHOD_INVOCATION_REGEX)
-    ) {
-        return null
+    // Don't fire multiline completion for unsupported languages.
+    if (isMethodOrFunctionInvocation || !isMultilineSupported) {
+        addAutocompleteDebugEvent('detectMultiline', {
+            languageId,
+            isMethodOrFunctionInvocation,
+        })
+
+        return {
+            multilineTrigger: null,
+            multilineTriggerPosition: null,
+        }
     }
 
-    const openingBracketMatch = currentLinePrefix.match(OPENING_BRACKET_REGEX)
-    if (
-        enableExtendedTriggers &&
+    const openingBracketMatch = getLastLine(prefix.trimEnd()).match(OPENING_BRACKET_REGEX)
+
+    const isSameLineOpeningBracketMatch =
+        currentLinePrefix.trim() !== '' &&
         openingBracketMatch &&
         // Only trigger multiline suggestions when the next non-empty line is indented less
         // than the block start line (the newly created block is empty).
         indentation(currentLinePrefix) >= indentation(nextNonEmptyLine)
-    ) {
-        return openingBracketMatch[0]
-    }
 
-    if (
+    const isNewLineOpeningBracketMatch =
         currentLinePrefix.trim() === '' &&
         currentLineSuffix.trim() === '' &&
-        // Only trigger multiline suggestions for the beginning of blocks
-        isBlockStartActive &&
-        // Only trigger multiline suggestions when the new current line is indented
+        openingBracketMatch &&
+        // Only trigger multiline suggestions when the next non-empty line is indented the same or less
         indentation(prevNonEmptyLine) < indentation(currentLinePrefix) &&
         // Only trigger multiline suggestions when the next non-empty line is indented less
         // than the block start line (the newly created block is empty).
         indentation(prevNonEmptyLine) >= indentation(nextNonEmptyLine)
-    ) {
-        return blockStart
+
+    if (isNewLineOpeningBracketMatch || isSameLineOpeningBracketMatch) {
+        addAutocompleteDebugEvent('detectMultiline', {
+            isNewLineOpeningBracketMatch,
+            isSameLineOpeningBracketMatch,
+        })
+
+        return {
+            multilineTrigger: openingBracketMatch[0],
+            multilineTriggerPosition: getPrefixLastNonEmptyCharPosition(prefix, position),
+        }
     }
 
-    return null
+    const nonEmptyLineEndsWithBlockStart =
+        currentLinePrefix.trim() !== '' &&
+        isBlockStartActive &&
+        indentation(currentLinePrefix) >= indentation(nextNonEmptyLine)
+
+    const isEmptyLineAfterBlockStart =
+        currentLinePrefix.trim() === '' &&
+        currentLineSuffix.trim() === '' &&
+        // Only trigger multiline suggestions for the beginning of blocks
+        isBlockStartActive &&
+        // Only trigger multiline suggestions when the next non-empty line is indented the same or less
+        indentation(prevNonEmptyLine) < indentation(currentLinePrefix) &&
+        // Only trigger multiline suggestions when the next non-empty line is indented less
+        // than the block start line (the newly created block is empty).
+        indentation(prevNonEmptyLine) >= indentation(nextNonEmptyLine)
+
+    if (nonEmptyLineEndsWithBlockStart || isEmptyLineAfterBlockStart) {
+        addAutocompleteDebugEvent('detectMultiline', {
+            nonEmptyLineEndsWithBlockStart,
+            isEmptyLineAfterBlockStart,
+        })
+
+        return {
+            multilineTrigger: blockStart,
+            multilineTriggerPosition: getPrefixLastNonEmptyCharPosition(prefix, position),
+        }
+    }
+
+    addAutocompleteDebugEvent('detectMultiline', {
+        nonEmptyLineEndsWithBlockStart,
+        isEmptyLineAfterBlockStart,
+        isNewLineOpeningBracketMatch,
+        isSameLineOpeningBracketMatch,
+    })
+
+    return {
+        multilineTrigger: null,
+        multilineTriggerPosition: null,
+    }
+}
+
+/**
+ * Precalculate the multiline trigger position based on `prefix` and `cursorPosition` to be
+ * able to change it during streaming to the end of the first line of the completion.
+ */
+function getPrefixLastNonEmptyCharPosition(prefix: string, cursorPosition: Position): Position {
+    const trimmedPrefix = prefix.trimEnd()
+    const diffLength = prefix.length - trimmedPrefix.length
+    if (diffLength === 0) {
+        return cursorPosition.translate(0, -1)
+    }
+
+    const prefixDiff = prefix.slice(-diffLength)
+    return new Position(
+        cursorPosition.line - (lines(prefixDiff).length - 1),
+        getLastLine(trimmedPrefix).length - 1
+    )
 }

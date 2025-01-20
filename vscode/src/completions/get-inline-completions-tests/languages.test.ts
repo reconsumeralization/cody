@@ -1,314 +1,262 @@
 import dedent from 'dedent'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { CompletionParameters } from '@sourcegraph/cody-shared/src/sourcegraph-api/completions/types'
-
-import { completion } from '../test-helpers'
-import { MULTILINE_STOP_SEQUENCE } from '../text-processing'
-
-import { getInlineCompletionsInsertText, params } from './helpers'
+import { getInlineCompletionsWithInlinedChunks } from './helpers'
 
 describe('[getInlineCompletions] languages', () => {
-    test('works with python', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for i in range(11):
-                        if i % 2 == 0:
-                            █
-                `,
-                [
-                    completion`
-                            ├print(i)
-                        elif i % 3 == 0:
-                            print(f"Multiple of 3: {i}")
-                        else:
-                            print(f"ODD {i}")
+    it('works with python', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            `for i in range(11):
+                if i % 2 == 0:
+                    █print(i)
+                elif i % 3 == 0:
+                    print(f"Multiple of 3: {i}")
+                else:
+                    print(f"ODD {i}")
 
-                    for i in range(12):
-                        print("unrelated")┤`,
-                ],
-                {
-                    languageId: 'python',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                }
-            )
+            for i in range(12):
+                print("unrelated")█
+            `,
+            {
+                languageId: 'python',
+            }
         )
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-                "print(i)
-                    elif i % 3 == 0:
-                        print(f\\"Multiple of 3: {i}\\")
-                    else:
-                        print(f\\"ODD {i}\\")"
-            `)
+
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "print(i)
+              elif i % 3 == 0:
+                  print(f"Multiple of 3: {i}")
+              else:
+                  print(f"ODD {i}")"
+        `)
     })
 
-    test('works with java', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for (int i = 0; i < 11; i++) {
-                        if (i % 2 == 0) {
-                            █
-                `,
-                [
-                    completion`
-                            ├System.out.println(i);
-                        } else if (i % 3 == 0) {
-                            System.out.println("Multiple of 3: " + i);
-                        } else {
-                            System.out.println("ODD " + i);
-                        }
-                    }
-
-                    for (int i = 0; i < 12; i++) {
-                        System.out.println("unrelated");
-                    }┤`,
-                ],
-                {
-                    languageId: 'java',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                }
-            )
-        )
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-                "System.out.println(i);
+    it('works with java', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for (int i = 0; i < 11; i++) {
+                    if (i % 2 == 0) {
+                        █System.out.println(i);
                     } else if (i % 3 == 0) {
-                        System.out.println(\\"Multiple of 3: \\" + i);
+                        System.out.println("Multiple of 3: " + i);
                     } else {
-                        System.out.println(\\"ODD \\" + i);
-                    }"
-            `)
+                        System.out.println("ODD " + i);
+                    }
+                }
+
+                for (int i = 0; i < 12; i++) {
+                    System.out.println("unrelated");
+                }█`,
+            {
+                languageId: 'java',
+            }
+        )
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "System.out.println(i);
+          } else if (i % 3 == 0) {
+              System.out.println("Multiple of 3: " + i);
+          } else {
+              System.out.println("ODD " + i);
+          }"
+        `)
     })
 
     // TODO: Detect `}\nelse\n{` pattern for else skip logic
-    test('works with csharp', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for (int i = 0; i < 11; i++) {
-                        if (i % 2 == 0)
-                        {
-                            █
-                `,
-                [
-                    completion`
-                            ├Console.WriteLine(i);
-                        }
-                        else if (i % 3 == 0)
-                        {
-                            Console.WriteLine("Multiple of 3: " + i);
-                        }
-                        else
-                        {
-                            Console.WriteLine("ODD " + i);
-                        }
-
-                    }
-
-                    for (int i = 0; i < 12; i++)
+    it('works with csharp', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for (int i = 0; i < 11; i++) {
+                    if (i % 2 == 0)
                     {
-                        Console.WriteLine("unrelated");
-                    }┤`,
-                ],
-                {
-                    languageId: 'csharp',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                }
-            )
-        )
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-                "Console.WriteLine(i);
-                    }"
-            `)
-    })
-
-    test('works with c++', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for (int i = 0; i < 11; i++) {
-                        if (i % 2 == 0) {
-                            █
-                `,
-                [
-                    completion`
-                            ├std::cout << i;
-                        } else if (i % 3 == 0) {
-                            std::cout << "Multiple of 3: " << i;
-                        } else  {
-                            std::cout << "ODD " << i;
-                        }
+                        █Console.WriteLine(i);
+                    }
+                    else if (i % 3 == 0)
+                    {
+                        Console.WriteLine("Multiple of 3: " + i);
+                    }
+                    else
+                    {
+                        Console.WriteLine("ODD " + i);
                     }
 
-                    for (int i = 0; i < 12; i++) {
-                        std::cout << "unrelated";
-                    }┤`,
-                ],
-                {
-                    languageId: 'cpp',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
                 }
-            )
+
+                for (int i = 0; i < 12; i++)
+                {
+                    Console.WriteLine("unrelated");
+                }█
+            `,
+            {
+                languageId: 'csharp',
+            }
         )
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-                "std::cout << i;
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "Console.WriteLine(i);
+          }"
+        `)
+    })
+
+    it('works with c++', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for (int i = 0; i < 11; i++) {
+                    if (i % 2 == 0) {
+                        █std::cout << i;
                     } else if (i % 3 == 0) {
-                        std::cout << \\"Multiple of 3: \\" << i;
+                        std::cout << "Multiple of 3: " << i;
                     } else  {
-                        std::cout << \\"ODD \\" << i;
-                    }"
-            `)
+                        std::cout << "ODD " << i;
+                    }
+                }
+
+                for (int i = 0; i < 12; i++) {
+                    std::cout << "unrelated";
+                }█`,
+            {
+                languageId: 'cpp',
+            }
+        )
+
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "std::cout << i;
+          } else if (i % 3 == 0) {
+              std::cout << "Multiple of 3: " << i;
+          } else  {
+              std::cout << "ODD " << i;
+          }"
+        `)
     })
 
-    test('works with c', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for (int i = 0; i < 11; i++) {
-                        if (i % 2 == 0) {
-                            █
-                `,
-                [
-                    completion`
-                            ├printf("%d", i);
-                        } else if (i % 3 == 0) {
-                            printf("Multiple of 3: %d", i);
-                        } else {
-                            printf("ODD %d", i);
-                        }
+    it('works with c', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for (int i = 0; i < 11; i++) {
+                    if (i % 2 == 0) {
+                        █printf("%d", i);
+                    } else if (i % 3 == 0) {
+                        printf("Multiple of 3: %d", i);
+                    } else {
+                        printf("ODD %d", i);
+                    }
+                }
+
+                for (int i = 0; i < 12; i++) {
+                    printf("unrelated");
+                }█`,
+            {
+                languageId: 'c',
+            }
+        )
+
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "printf("%d", i);
+          } else if (i % 3 == 0) {
+              printf("Multiple of 3: %d", i);
+          } else {
+              printf("ODD %d", i);
+          }"
+        `)
+    })
+
+    it('works with php', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for ($i = 0; $i < 11; $i++) {
+                    if ($i % 2 == 0) {
+                        █echo $i;
+                    } else if ($i % 3 == 0) {
+                        echo "Multiple of 3: " . $i;
+                    } else {
+                        echo "ODD " . $i;
+                    }
+                }
+
+                for ($i = 0; $i < 12; $i++) {
+                    echo "unrelated";
+                }█`,
+            {
+                languageId: 'c',
+            }
+        )
+
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "echo $i;
+          } else if ($i % 3 == 0) {
+              echo "Multiple of 3: " . $i;
+          } else {
+              echo "ODD " . $i;
+          }"
+        `)
+    })
+
+    it('works with dart', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            dedent`
+                for (int i = 0; i < 11; i++) {
+                    if (i % 2 == 0) {
+                        █print(i);
+                    } else if (i % 3 == 0) {
+                        print('Multiple of 3: $i');
+                    } else {
+                        print('ODD $i');
+                    }
                     }
 
                     for (int i = 0; i < 12; i++) {
-                        printf("unrelated");
-                    }┤`,
-                ],
-                {
-                    languageId: 'c',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                }
-            )
+                    print('unrelated');
+                    }█`,
+            {
+                languageId: 'dart',
+            }
         )
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-                "printf(\\"%d\\", i);
+
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "print(i);
+          } else if (i % 3 == 0) {
+              print('Multiple of 3: $i');
+          } else {
+              print('ODD $i');
+          }"
+        `)
+    })
+
+    it('works with kotlin', async () => {
+        const { items, docContext } = await getInlineCompletionsWithInlinedChunks(
+            `fun main() {
+                for (i in 0..10) {
+                    if (i % 2 == 0) {
+                        █println(i)
                     } else if (i % 3 == 0) {
-                        printf(\\"Multiple of 3: %d\\", i);
+                        println("Multiple of 3: $i")
                     } else {
-                        printf(\\"ODD %d\\", i);
-                    }"
-            `)
-    })
-
-    test('works with php', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for ($i = 0; $i < 11; $i++) {
-                        if ($i % 2 == 0) {
-                            █
-                `,
-                [
-                    completion`
-                            ├echo $i;
-                        } else if ($i % 3 == 0) {
-                            echo "Multiple of 3: " . $i;
-                        } else {
-                            echo "ODD " . $i;
-                        }
+                        println("ODD $i")
                     }
-
-                    for ($i = 0; $i < 12; $i++) {
-                        echo "unrelated";
-                    }┤`,
-                ],
-                {
-                    languageId: 'c',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
                 }
-            )
+
+                for (i in 0..11) {
+                    println("unrelated")
+                }
+            }█`,
+            {
+                languageId: 'kotlin',
+            }
         )
 
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-              "echo $i;
-                  } else if ($i % 3 == 0) {
-                      echo \\"Multiple of 3: \\" . $i;
-                  } else {
-                      echo \\"ODD \\" . $i;
-                  }"
-            `)
-    })
-
-    test('works with dart', async () => {
-        const requests: CompletionParameters[] = []
-        const items = await getInlineCompletionsInsertText(
-            params(
-                dedent`
-                    for (int i = 0; i < 11; i++) {
-                        if (i % 2 == 0) {
-                            █
-                `,
-                [
-                    completion`
-                            ├print(i);
-                        } else if (i % 3 == 0) {
-                          print('Multiple of 3: $i');
-                        } else {
-                          print('ODD $i');
-                        }
-                      }
-
-                      for (int i = 0; i < 12; i++) {
-                        print('unrelated');
-                      }┤`,
-                ],
-                {
-                    languageId: 'dart',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                }
-            )
-        )
-
-        expect(requests).toHaveLength(3)
-        expect(requests[0].stopSequences).not.toContain(MULTILINE_STOP_SEQUENCE)
-        expect(items[0]).toMatchInlineSnapshot(`
-              "print(i);
+        expect(docContext.multilineTrigger).toBeTruthy()
+        expect(items[0].insertText).toMatchInlineSnapshot(`
+          "println(i)
                   } else if (i % 3 == 0) {
-                      print('Multiple of 3: $i');
+                      println("Multiple of 3: $i")
                   } else {
-                      print('ODD $i');
+                      println("ODD $i")
                   }"
-            `)
+        `)
     })
 })

@@ -1,128 +1,126 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-
-import './App.css'
-
-import { ChatContextStatus } from '@sourcegraph/cody-shared/src/chat/context'
-import { CodyPrompt } from '@sourcegraph/cody-shared/src/chat/prompts'
-import { ChatHistory, ChatMessage } from '@sourcegraph/cody-shared/src/chat/transcript/messages'
-import { Configuration } from '@sourcegraph/cody-shared/src/configuration'
+import { type ComponentProps, useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
-    AuthMethod,
-    AuthStatus,
-    defaultAuthStatus,
-    Experiments,
-    LocalEnv,
-    OnboardingExperimentArm,
-} from '../src/chat/protocol'
-
-import { Chat } from './Chat'
+    type ChatMessage,
+    type CodyClientConfig,
+    type DefaultContext,
+    GuardrailsPost,
+    PromptString,
+    type TelemetryRecorder,
+    getAuthErrorMessage,
+} from '@sourcegraph/cody-shared'
+import type { AuthMethod } from '../src/chat/protocol'
+import styles from './App.module.css'
+import { AuthPage } from './AuthPage'
 import { LoadingPage } from './LoadingPage'
-import { Login } from './Login'
-import { View } from './NavBar'
-import { Notices } from './Notices'
-import { LoginSimplified } from './OnboardingExperiment'
-import { UserHistory } from './UserHistory'
-import { createWebviewTelemetryService } from './utils/telemetry'
+import { useClientActionDispatcher } from './client/clientState'
+import { WebviewOpenTelemetryService } from './utils/webviewOpenTelemetryService'
+
+import { ExtensionAPIProviderFromVSCodeAPI } from '@sourcegraph/prompt-editor'
+import { CodyPanel } from './CodyPanel'
+import { AuthenticationErrorBanner } from './components/AuthenticationErrorBanner'
+import { useSuppressKeys } from './components/hooks'
+import { IntentDetectionConfigProvider } from './components/omnibox/intentDetection'
+import { View } from './tabs'
 import type { VSCodeWrapper } from './utils/VSCodeApi'
+import { ComposedWrappers, type Wrapper } from './utils/composeWrappers'
+import { updateDisplayPathEnvInfoForWebview } from './utils/displayPathEnvInfo'
+import { TelemetryRecorderContext, createWebviewTelemetryRecorder } from './utils/telemetry'
+import { ClientConfigProvider } from './utils/useClientConfig'
+import { type Config, ConfigProvider } from './utils/useConfig'
 
 export const App: React.FunctionComponent<{ vscodeAPI: VSCodeWrapper }> = ({ vscodeAPI }) => {
-    const [config, setConfig] = useState<
-        (Pick<Configuration, 'debugEnable' | 'serverEndpoint'> & LocalEnv & Experiments) | null
-    >(null)
-    const [endpoint, setEndpoint] = useState<string | null>(null)
-    const [view, setView] = useState<View | undefined>()
+    const [config, setConfig] = useState<Config | null>(null)
+    const [clientConfig, setClientConfig] = useState<CodyClientConfig | null>(null)
+    // NOTE: View state will be set by the extension host during initialization.
+    const [view, setView] = useState<View>()
     const [messageInProgress, setMessageInProgress] = useState<ChatMessage | null>(null)
-    const [messageBeingEdited, setMessageBeingEdited] = useState<boolean>(false)
+
     const [transcript, setTranscript] = useState<ChatMessage[]>([])
-    const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null)
-    const [formInput, setFormInput] = useState('')
-    const [inputHistory, setInputHistory] = useState<string[] | []>([])
-    const [userHistory, setUserHistory] = useState<ChatHistory | null>(null)
-    const [contextStatus, setContextStatus] = useState<ChatContextStatus | null>(null)
+
     const [errorMessages, setErrorMessages] = useState<string[]>([])
-    const [suggestions, setSuggestions] = useState<string[] | undefined>()
-    const [isAppInstalled, setIsAppInstalled] = useState<boolean>(false)
-    const [myPrompts, setMyPrompts] = useState<
-        [string, CodyPrompt & { isLastInGroup?: boolean; instruction?: string }][] | null
-    >(null)
-    const [isTranscriptError, setIsTranscriptError] = useState<boolean>(false)
+
+    const dispatchClientAction = useClientActionDispatcher()
+
+    const guardrails = useMemo(() => {
+        return new GuardrailsPost((snippet: string) => {
+            vscodeAPI.postMessage({
+                command: 'attribution-search',
+                snippet,
+            })
+        })
+    }, [vscodeAPI])
+
+    useSuppressKeys()
 
     useEffect(
         () =>
             vscodeAPI.onMessage(message => {
                 switch (message.type) {
+                    case 'ui/theme': {
+                        document.documentElement.dataset.ide = message.agentIDE
+                        const rootStyle = document.documentElement.style
+                        for (const [name, value] of Object.entries(message.cssVariables || {})) {
+                            rootStyle.setProperty(name, value)
+                        }
+                        break
+                    }
                     case 'transcript': {
+                        const deserializedMessages = message.messages.map(
+                            PromptString.unsafe_deserializeChatMessage
+                        )
                         if (message.isMessageInProgress) {
-                            const msgLength = message.messages.length - 1
-                            setTranscript(message.messages.slice(0, msgLength))
-                            setMessageInProgress(message.messages[msgLength])
-                            setIsTranscriptError(false)
+                            const msgLength = deserializedMessages.length - 1
+                            setTranscript(deserializedMessages.slice(0, msgLength))
+                            setMessageInProgress(deserializedMessages[msgLength])
                         } else {
-                            setTranscript(message.messages)
+                            setTranscript(deserializedMessages)
                             setMessageInProgress(null)
                         }
+                        vscodeAPI.setState(message.chatID)
                         break
                     }
                     case 'config':
-                        setConfig(message.config)
-                        setIsAppInstalled(message.config.isAppInstalled)
-                        setEndpoint(message.authStatus.endpoint)
-                        setAuthStatus(message.authStatus)
-                        setView(message.authStatus.isLoggedIn ? 'chat' : 'login')
+                        setConfig(message)
+                        updateDisplayPathEnvInfoForWebview(message.workspaceFolderUris)
+                        // Reset to the default view (Chat) for unauthenticated users.
+                        if (view && view !== View.Chat && !message.authStatus?.authenticated) {
+                            setView(View.Chat)
+                        }
                         break
-                    case 'login':
+                    case 'clientConfig':
+                        if (message.clientConfig) {
+                            setClientConfig(message.clientConfig)
+                        }
                         break
-                    case 'history':
-                        setInputHistory(message.messages?.input ?? [])
-                        setUserHistory(message.messages?.chat ?? null)
-                        break
-                    case 'contextStatus':
-                        setContextStatus(message.contextStatus)
+                    case 'clientAction':
+                        dispatchClientAction(message)
                         break
                     case 'errors':
-                        setErrorMessages([...errorMessages, message.errors].slice(-5))
+                        setErrorMessages(prev => [...prev, message.errors].slice(-5))
                         break
                     case 'view':
-                        setView(message.messages)
+                        setView(message.view)
                         break
-                    case 'suggestions':
-                        setSuggestions(message.suggestions)
-                        break
-                    case 'app-state':
-                        setIsAppInstalled(message.isInstalled)
-                        break
-                    case 'custom-prompts': {
-                        let prompts: [string, CodyPrompt & { isLastInGroup?: boolean; instruction?: string }][] =
-                            message.prompts
-
-                        if (!prompts) {
-                            setMyPrompts(null)
-                            break
+                    case 'attribution':
+                        if (message.attribution) {
+                            guardrails.notifyAttributionSuccess(message.snippet, {
+                                repositories: message.attribution.repositoryNames.map(name => {
+                                    return { name }
+                                }),
+                                limitHit: message.attribution.limitHit,
+                            })
                         }
-
-                        prompts = prompts.reduce(groupPrompts, []).map(addInstructions)
-
-                        // mark last prompts as last in group before adding another group
-                        const lastPrompt = prompts.at(-1)
-                        if (lastPrompt) {
-                            const [_, command] = lastPrompt
-                            command.isLastInGroup = true
+                        if (message.error) {
+                            guardrails.notifyAttributionFailure(
+                                message.snippet,
+                                new Error(message.error)
+                            )
                         }
-
-                        setMyPrompts([
-                            ...prompts,
-                            // add another group
-                            ['reset', { prompt: '', slashCommand: '/reset', description: 'Clear the chat' }],
-                        ])
-                        break
-                    }
-                    case 'transcript-errors':
-                        setIsTranscriptError(message.isTranscriptError)
                         break
                 }
             }),
-        [errorMessages, view, vscodeAPI]
+        [view, vscodeAPI, guardrails, dispatchClientAction]
     )
 
     useEffect(() => {
@@ -133,171 +131,127 @@ export const App: React.FunctionComponent<{ vscodeAPI: VSCodeWrapper }> = ({ vsc
     useEffect(() => {
         if (!view) {
             vscodeAPI.postMessage({ command: 'initialized' })
+            return
         }
     }, [view, vscodeAPI])
 
-    const onLoginRedirect = useCallback(
-        (uri: string) => {
-            setConfig(null)
-            setEndpoint(null)
-            setAuthStatus(defaultAuthStatus)
-            setView('login')
-            vscodeAPI.postMessage({ command: 'auth', type: 'callback', endpoint: uri })
-        },
-        [setEndpoint, vscodeAPI]
-    )
-
-    const simplifiedLoginRedirect = useCallback(
+    const loginRedirect = useCallback(
         (method: AuthMethod) => {
-            // Unlike onLoginRedirect, we do not change the view here. We want
-            // to keep presenting the login buttons until we get a token so
-            // users don't get stuck if they close the browser.
-            vscodeAPI.postMessage({ command: 'auth', type: 'simplified-onboarding', authMethod: method })
+            // We do not change the view here. We want to keep presenting the
+            // login buttons until we get a token so users don't get stuck if
+            // they close the browser during an auth flow.
+            vscodeAPI.postMessage({
+                command: 'auth',
+                authKind: 'simplified-onboarding',
+                authMethod: method,
+            })
         },
         [vscodeAPI]
     )
 
-    // Callbacks used for app setup after simplified onboarding
-    const onboardingPopupProps = {
-        installApp: () => {
-            vscodeAPI.postMessage({ command: 'simplified-onboarding', type: 'install-app' })
-        },
-        openApp: () => {
-            vscodeAPI.postMessage({ command: 'simplified-onboarding', type: 'open-app' })
-        },
-        reloadStatus: () => {
-            vscodeAPI.postMessage({ command: 'simplified-onboarding', type: 'reload-state' })
-        },
-    }
+    // V2 telemetry recorder
+    const telemetryRecorder = useMemo(() => createWebviewTelemetryRecorder(vscodeAPI), [vscodeAPI])
 
-    const telemetryService = useMemo(() => createWebviewTelemetryService(vscodeAPI), [vscodeAPI])
+    const webviewTelemetryService = useMemo(() => {
+        const service = WebviewOpenTelemetryService.getInstance()
+        return service
+    }, [])
 
-    if (!view || !authStatus || !config) {
+    useEffect(() => {
+        if (config) {
+            webviewTelemetryService.configure({
+                isTracingEnabled: true,
+                debugVerbose: true,
+                agentIDE: config.clientCapabilities.agentIDE,
+                extensionAgentVersion: config.clientCapabilities.agentExtensionVersion,
+            })
+        }
+    }, [config, webviewTelemetryService])
+
+    const wrappers = useMemo<Wrapper[]>(
+        () => getAppWrappers({ vscodeAPI, telemetryRecorder, config, clientConfig }),
+        [vscodeAPI, telemetryRecorder, config, clientConfig]
+    )
+
+    // Wait for all the data to be loaded before rendering Chat View
+    if (!view || !config) {
         return <LoadingPage />
     }
 
     return (
-        <div className="outer-container">
-            {view === 'login' || !authStatus.isLoggedIn ? (
-                config.experimentOnboarding === OnboardingExperimentArm.Simplified ? (
-                    <LoginSimplified
-                        simplifiedLoginRedirect={simplifiedLoginRedirect}
-                        telemetryService={telemetryService}
+        <ComposedWrappers wrappers={wrappers}>
+            {view === View.Login || !config.authStatus.authenticated ? (
+                <div className={styles.outerContainer}>
+                    {!config.authStatus.authenticated && config.authStatus.error && (
+                        <AuthenticationErrorBanner
+                            errorMessage={getAuthErrorMessage(config.authStatus.error)}
+                        />
+                    )}
+                    <AuthPage
+                        simplifiedLoginRedirect={loginRedirect}
+                        uiKindIsWeb={config.config.uiKindIsWeb}
                         vscodeAPI={vscodeAPI}
+                        codyIDE={config.clientCapabilities.agentIDE}
+                        endpoints={config.config.endpointHistory ?? []}
+                        authStatus={config.authStatus}
+                        allowEndpointChange={config.config.allowEndpointChange}
                     />
-                ) : (
-                    <Login
-                        authStatus={authStatus}
-                        endpoint={endpoint}
-                        isAppInstalled={isAppInstalled}
-                        isAppRunning={config?.isAppRunning}
-                        vscodeAPI={vscodeAPI}
-                        telemetryService={telemetryService}
-                        appOS={config?.os}
-                        appArch={config?.arch}
-                        uiKindIsWeb={config?.uiKindIsWeb}
-                        callbackScheme={config?.uriScheme}
-                        onLoginRedirect={onLoginRedirect}
-                    />
-                )
+                </div>
             ) : (
-                <>
-                    <Notices
-                        extensionVersion={config?.extensionVersion}
-                        probablyNewInstall={!!userHistory && Object.entries(userHistory).length === 0}
-                    />
-                    {errorMessages && <ErrorBanner errors={errorMessages} setErrors={setErrorMessages} />}
-                    {view === 'history' && (
-                        <UserHistory
-                            userHistory={userHistory}
-                            setUserHistory={setUserHistory}
-                            setInputHistory={setInputHistory}
-                            setView={setView}
-                            vscodeAPI={vscodeAPI}
-                        />
-                    )}
-                    {view === 'chat' && (
-                        <Chat
-                            messageInProgress={messageInProgress}
-                            messageBeingEdited={messageBeingEdited}
-                            setMessageBeingEdited={setMessageBeingEdited}
-                            transcript={transcript}
-                            contextStatus={contextStatus}
-                            formInput={formInput}
-                            setFormInput={setFormInput}
-                            inputHistory={inputHistory}
-                            setInputHistory={setInputHistory}
-                            vscodeAPI={vscodeAPI}
-                            suggestions={suggestions}
-                            setSuggestions={setSuggestions}
-                            telemetryService={telemetryService}
-                            chatCommands={myPrompts || undefined}
-                            isTranscriptError={isTranscriptError}
-                            applessOnboarding={{
-                                arm: config.experimentOnboarding,
-                                endpoint,
-                                embeddingsEndpoint: contextStatus?.embeddingsEndpoint,
-                                props: {
-                                    isAppInstalled,
-                                    onboardingPopupProps,
-                                },
-                            }}
-                        />
-                    )}
-                </>
+                <CodyPanel
+                    view={view}
+                    setView={setView}
+                    configuration={config}
+                    errorMessages={errorMessages}
+                    setErrorMessages={setErrorMessages}
+                    attributionEnabled={clientConfig?.attributionEnabled ?? false}
+                    chatEnabled={clientConfig?.chatEnabled ?? true}
+                    instanceNotices={clientConfig?.notices ?? []}
+                    messageInProgress={messageInProgress}
+                    transcript={transcript}
+                    vscodeAPI={vscodeAPI}
+                    guardrails={guardrails}
+                    smartApplyEnabled={config.config.smartApply}
+                />
             )}
-        </div>
+        </ComposedWrappers>
     )
 }
 
-const ErrorBanner: React.FunctionComponent<{ errors: string[]; setErrors: (errors: string[]) => void }> = ({
-    errors,
-    setErrors,
-}) => (
-    <div className="error-container">
-        {errors.map((error, i) => (
-            <div key={i} className="error">
-                <span>{error}</span>
-                <button type="button" className="close-btn" onClick={() => setErrors(errors.filter(e => e !== error))}>
-                    ×
-                </button>
-            </div>
-        ))}
-    </div>
-)
-
-/**
- * Adds `isLastInGroup` field to a prompt if represents last item in a group (e.g., default/custom/etc. prompts).
- */
-function groupPrompts(
-    acc: [string, CodyPrompt & { isLastInGroup?: boolean }][],
-    [key, command]: [string, CodyPrompt],
-    index: number,
-    array: [string, CodyPrompt][]
-): [string, CodyPrompt & { isLastInGroup?: boolean }][] {
-    if (key === 'separator') {
-        return acc
-    }
-
-    const nextItem = array[index + 1]
-    if (nextItem?.[0] === 'separator') {
-        acc.push([key, { ...command, isLastInGroup: true }])
-        return acc
-    }
-
-    acc.push([key, command])
-    return acc
+interface GetAppWrappersOptions {
+    vscodeAPI: VSCodeWrapper
+    telemetryRecorder: TelemetryRecorder
+    config: Config | null
+    clientConfig: CodyClientConfig | null
+    staticDefaultContext?: DefaultContext
 }
 
-const instructionLabels: Record<string, string> = {
-    '/ask': '[question]',
-    '/edit': '[instruction]',
-}
-
-/**
- * Adds `instruction` field to a prompt if it requires additional instruction.
- */
-function addInstructions<T extends CodyPrompt>([key, command]: [string, T]): [string, T & { instruction?: string }] {
-    const instruction = instructionLabels[command.slashCommand]
-    return [key, { ...command, instruction }]
+export function getAppWrappers({
+    vscodeAPI,
+    telemetryRecorder,
+    config,
+    clientConfig,
+    staticDefaultContext,
+}: GetAppWrappersOptions): Wrapper[] {
+    return [
+        {
+            component: IntentDetectionConfigProvider,
+        },
+        {
+            provider: TelemetryRecorderContext.Provider,
+            value: telemetryRecorder,
+        } satisfies Wrapper<ComponentProps<typeof TelemetryRecorderContext.Provider>['value']>,
+        {
+            component: ExtensionAPIProviderFromVSCodeAPI,
+            props: { vscodeAPI, staticDefaultContext },
+        } satisfies Wrapper<any, ComponentProps<typeof ExtensionAPIProviderFromVSCodeAPI>>,
+        {
+            component: ConfigProvider,
+            props: { value: config },
+        } satisfies Wrapper<any, ComponentProps<typeof ConfigProvider>>,
+        {
+            component: ClientConfigProvider,
+            props: { value: clientConfig },
+        } satisfies Wrapper<any, ComponentProps<typeof ClientConfigProvider>>,
+    ]
 }

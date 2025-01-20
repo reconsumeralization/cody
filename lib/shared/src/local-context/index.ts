@@ -1,25 +1,11 @@
-export interface ContextResult {
-    repoName?: string
-    revision?: string
-    fileName: string
-    content: string
-}
+import type { URI } from 'vscode-uri'
 
-export interface KeywordContextFetcher {
-    getContext(query: string, numResults: number): Promise<ContextResult[]>
-    getSearchContext(query: string, numResults: number): Promise<ContextResult[]>
-}
-
-export interface FilenameContextFetcher {
-    getContext(query: string, numResults: number): Promise<ContextResult[]>
-}
-
-export interface Point {
+interface Point {
     row: number
     col: number
 }
 
-export interface Range {
+interface Range {
     startByte: number
     endByte: number
     startPoint: Point
@@ -33,12 +19,9 @@ export interface Result {
     doc: string
     exported: boolean
     lang: string
-    file: string
+    file: URI
     range: Range
     summary: string
-}
-
-export interface IndexedKeywordContextFetcher {
-    getIndexReady(scopeDir: string, whenReadyFn: () => void): Promise<boolean>
-    getResults(query: string, scopeDir: string): Promise<Result[]>
+    blugeScore: number
+    heuristicBoostID?: string
 }

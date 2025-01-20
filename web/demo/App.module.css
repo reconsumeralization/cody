@@ -1,0 +1,27 @@
+@import url('../../vscode/.storybook/static/vscode-themes/dark-modern.css');
+
+html,
+:host {
+    tab-size: 4;
+    line-height: 1.5;
+    text-size-adjust: 100%;
+    font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji';
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: inherit;
+}
+
+:root {
+    color-scheme: dark;
+}
+
+.root {
+    font-size: 13px;
+    height: 100vh;
+}

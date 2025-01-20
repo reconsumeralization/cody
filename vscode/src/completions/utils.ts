@@ -1,29 +1,16 @@
 import * as anthropic from '@anthropic-ai/sdk'
 
-import { Message } from '@sourcegraph/cody-shared/src/sourcegraph-api'
+import { type Message, TimeoutError } from '@sourcegraph/cody-shared'
 
 export function messagesToText(messages: Message[]): string {
     return messages
         .map(
             message =>
                 `${message.speaker === 'human' ? anthropic.HUMAN_PROMPT : anthropic.AI_PROMPT}${
-                    message.text === undefined ? '' : ' ' + message.text
+                    message.text === undefined ? '' : ` ${message.text}`
                 }`
         )
         .join('')
-}
-
-/**
- * The size of the Jaccard distance match window in number of lines. It determines how many
- * lines of the 'matchText' are considered at once when searching for a segment
- * that is most similar to the 'targetText'. In essence, it sets the maximum number
- * of lines that the best match can be. A larger 'windowSize' means larger potential matches
- */
-export const SNIPPET_WINDOW_SIZE = 50
-
-export function lastNLines(text: string, n: number): string {
-    const lines = text.split('\n')
-    return lines.slice(Math.max(0, lines.length - n)).join('\n')
 }
 
 /**
@@ -42,29 +29,85 @@ export function forkSignal(signal: AbortSignal): AbortController {
     return controller
 }
 
-/**
- * Creates a simple subscriber that can be used to register callbacks
- */
-type Listener<T> = (value: T) => void
-interface Subscriber<T> {
-    subscribe(listener: Listener<T>): () => void
-    notify(value: T): void
-}
-export function createSubscriber<T>(): Subscriber<T> {
-    const listeners: Set<Listener<T>> = new Set()
-    function subscribe(listener: Listener<T>): () => void {
-        listeners.add(listener)
-        return () => listeners.delete(listener)
-    }
+export async function* zipGenerators<T>(generators: AsyncGenerator<T>[]): AsyncGenerator<T[]> {
+    while (true) {
+        const res = await Promise.all(generators.map(generator => generator.next()))
 
-    function notify(value: T): void {
-        for (const listener of listeners) {
-            listener(value)
+        if (res.every(r => r.done)) {
+            return
         }
-    }
 
-    return {
-        subscribe,
-        notify,
+        yield res.map(r => r.value)
     }
+}
+
+export async function* generatorWithErrorObserver<T>(
+    generator: AsyncGenerator<T>,
+    errorObserver: (error: unknown) => void
+): AsyncGenerator<T> {
+    try {
+        while (true) {
+            try {
+                const res = await generator.next()
+                if (res.done) {
+                    return
+                }
+                yield res.value
+            } catch (error: unknown) {
+                errorObserver(error)
+                throw error
+            }
+        }
+    } finally {
+        // The return value is optional according to MDN
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncGenerator/return
+        // @ts-ignore
+        generator.return()
+    }
+}
+
+export async function* generatorWithTimeout<T>(
+    generatorInput: AsyncGenerator<T> | Promise<AsyncGenerator<T>>,
+    timeoutMs: number,
+    abortController: AbortController
+): AsyncGenerator<T> {
+    const generator = await (generatorInput instanceof Promise
+        ? generatorInput
+        : Promise.resolve(generatorInput))
+    try {
+        if (timeoutMs === 0) {
+            return
+        }
+
+        const timeoutPromise = createTimeout(timeoutMs).finally(() => {
+            abortController.abort()
+        })
+
+        while (true) {
+            const { value, done } = await Promise.race([generator.next(), timeoutPromise])
+
+            if (value) {
+                yield value
+            }
+
+            if (done) {
+                break
+            }
+        }
+    } finally {
+        // The return value is optional according to MDN
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncGenerator/return
+        // @ts-ignore
+        generator.return()
+    }
+}
+
+function createTimeout(timeoutMs: number): Promise<never> {
+    return new Promise((_, reject) =>
+        setTimeout(() => reject(new TimeoutError('The request timed out')), timeoutMs)
+    )
+}
+
+export function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }

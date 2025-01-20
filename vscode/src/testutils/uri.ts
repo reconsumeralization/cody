@@ -1,5 +1,5 @@
 import { URI, Utils } from 'vscode-uri'
-import { UriComponents } from 'vscode-uri/lib/umd/uri'
+import type { UriComponents } from 'vscode-uri/lib/umd/uri'
 
 /**
  *
@@ -18,7 +18,7 @@ import { UriComponents } from 'vscode-uri/lib/umd/uri'
  * We tried copy-pasting the full implementation of `vscode.Uri` into this
  * repository but it required adding >3k lines of code with minor that we have
  * to keep up-to-date and maintain. https://github.com/sourcegraph/cody/pull/1264
- 
+
  * We tried using `Proxy` to avoid having to reimplement all APIs but this
  * solution didn't faithfully reproduce the behavior of `instanceof` checks.
  * https://github.com/sourcegraph/cody/pull/1335
@@ -31,12 +31,12 @@ export class Uri {
         return new Uri(URI.parse(value, strict))
     }
 
-    public static file(path: string): URI {
+    public static file(path: string): Uri {
         return new Uri(URI.file(path))
     }
 
     public static joinPath(base: Uri, ...pathSegments: string[]): Uri {
-        return new Uri(Utils.joinPath(base.uri, ...pathSegments))
+        return new Uri(Utils.joinPath(base.uri ?? new Uri(base), ...pathSegments))
     }
 
     public static from(components: {
@@ -49,7 +49,7 @@ export class Uri {
         return new Uri(URI.from(components))
     }
 
-    private uri: URI
+    private readonly uri: URI
 
     private constructor(componentsOrUri: UriComponents | URI) {
         if (componentsOrUri instanceof URI) {
@@ -57,26 +57,19 @@ export class Uri {
         } else {
             this.uri = URI.from(componentsOrUri)
         }
+
+        this.scheme = this.uri.scheme
+        this.authority = this.uri.authority
+        this.path = this.uri.path
+        this.query = this.uri.query
+        this.fragment = this.uri.fragment
     }
 
-    public get scheme(): string {
-        return this.uri.scheme
-    }
-
-    public get authority(): string {
-        return this.uri.authority
-    }
-    public get path(): string {
-        return this.uri.path
-    }
-
-    public get query(): string {
-        return this.uri.query
-    }
-
-    public get fragment(): string {
-        return this.uri.fragment
-    }
+    public readonly scheme: string
+    public readonly authority: string
+    public readonly path: string
+    public readonly query: string
+    public readonly fragment: string
 
     public get fsPath(): string {
         return this.uri.fsPath

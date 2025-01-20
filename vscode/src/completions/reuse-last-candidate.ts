@@ -1,30 +1,69 @@
 import * as vscode from 'vscode'
 
-import { isDefined } from '@sourcegraph/cody-shared/src/common'
+import { type DocumentContext, isDefined } from '@sourcegraph/cody-shared'
 
-import { DocumentContext } from './get-current-doc-context'
+import { getCurrentLinePrefixWithoutInjectedPrefix } from './doc-context-getters'
 import {
-    InlineCompletionsParams,
-    InlineCompletionsResult,
+    type InlineCompletionsParams,
+    type InlineCompletionsResult,
     InlineCompletionsResultSource,
-    LastInlineCompletionCandidate,
+    type LastInlineCompletionCandidate,
 } from './get-inline-completions'
-import { RequestParams } from './request-manager'
-import { InlineCompletionItemWithAnalytics } from './text-processing/process-inline-completions'
+import type { RequestParams } from './request-manager'
+import type { InlineCompletionItemWithAnalytics } from './text-processing/process-inline-completions'
 
 type ReuseLastCandidateArgument =
     // required fields from InlineCompletionsParams
     Required<
         Pick<
             InlineCompletionsParams,
-            'document' | 'position' | 'selectedCompletionInfo' | 'lastCandidate' | 'completeSuggestWidgetSelection'
+            'document' | 'position' | 'selectedCompletionInfo' | 'lastCandidate'
         >
     > &
         // optional fields from InlineCompletionsParams
-        Pick<InlineCompletionsParams, 'handleDidAcceptCompletionItem' | 'handleDidPartiallyAcceptCompletionItem'> & {
+        Pick<
+            InlineCompletionsParams,
+            'handleDidAcceptCompletionItem' | 'handleDidPartiallyAcceptCompletionItem'
+        > & {
             // additional fields
             docContext: DocumentContext
         }
+
+export function canReuseLastCandidateInDocumentContext({
+    document,
+    position,
+    selectedCompletionInfo,
+    lastCandidate: { lastTriggerPosition, lastTriggerDocContext, lastTriggerSelectedCompletionInfo },
+    lastCandidate,
+    docContext: { nextNonEmptyLine },
+    docContext,
+}: ReuseLastCandidateArgument): boolean {
+    const isSameDocument = lastCandidate.uri.toString() === document.uri.toString()
+    const isSameLine = lastTriggerPosition.line === position.line
+    const isSameNextNonEmptyLine = lastTriggerDocContext.nextNonEmptyLine === nextNonEmptyLine
+
+    const lastTriggerCurrentLinePrefixWithoutInject =
+        getCurrentLinePrefixWithoutInjectedPrefix(lastTriggerDocContext)
+    const currentLinePrefixWithoutInject = getCurrentLinePrefixWithoutInjectedPrefix(docContext)
+
+    // When the current request has an selectedCompletionInfo set, we have to compare that a last
+    // candidate is only reused if it is has same completion info selected.
+    //
+    // This will handle cases where the user fully accepts a completion info. In that case, the
+    // lastTriggerSelectedCompletionInfo.text will be set but the selectedCompletionInfo will be
+    // empty, allowing the last candidate to be reused.
+    const isSameSelectedInfoItemOrFullyAccepted =
+        // The `selectedCompletionInfo` might change if user types forward as suggested, so we can reuse the
+        // last candidate in that case.
+        selectedCompletionInfo &&
+        lastTriggerCurrentLinePrefixWithoutInject === currentLinePrefixWithoutInject
+            ? lastTriggerSelectedCompletionInfo?.text === selectedCompletionInfo?.text
+            : true
+
+    return (
+        isSameDocument && isSameLine && isSameNextNonEmptyLine && isSameSelectedInfoItemOrFullyAccepted
+    )
+}
 
 /**
  * See test cases for the expected behaviors.
@@ -33,78 +72,166 @@ export function reuseLastCandidate({
     document,
     position,
     selectedCompletionInfo,
-    lastCandidate: { lastTriggerPosition, lastTriggerDocContext, lastTriggerSelectedInfoItem },
+    lastCandidate: { lastTriggerPosition, lastTriggerDocContext },
     lastCandidate,
-    docContext: { currentLinePrefix, currentLineSuffix, nextNonEmptyLine },
-    completeSuggestWidgetSelection,
+    docContext: { currentLinePrefix, currentLineSuffix },
+    docContext,
     handleDidAcceptCompletionItem,
     handleDidPartiallyAcceptCompletionItem,
 }: ReuseLastCandidateArgument): InlineCompletionsResult | null {
-    const isSameDocument = lastCandidate.uri.toString() === document.uri.toString()
-    const isSameLine = lastTriggerPosition.line === position.line
-    const isSameNextNonEmptyLine = lastTriggerDocContext.nextNonEmptyLine === nextNonEmptyLine
+    const canReuse = canReuseLastCandidateInDocumentContext({
+        document,
+        position,
+        selectedCompletionInfo,
+        lastCandidate,
+        docContext,
+    })
 
-    // If completeSuggestWidgetSelection is enabled, we have to compare that a last candidate is
-    // only reused if it is has same completion info selected.
-    const isSameTriggerSelectedInfoItem = completeSuggestWidgetSelection
-        ? lastTriggerSelectedInfoItem === selectedCompletionInfo?.text
-        : true
-
-    if (!isSameDocument || !isSameLine || !isSameNextNonEmptyLine || !isSameTriggerSelectedInfoItem) {
+    if (!canReuse) {
         return null
     }
 
+    // The currentLinePrefix might have an injected prefix. This is usually expected, since we want
+    // to use eventual suggest widget state to guide the completion, but ofr the last candidate
+    // logic we need to get the line prefix as it appears in the document and there, the prefix is
+    // not present yet.
+    const lastTriggerCurrentLinePrefixInDocument = lastTriggerDocContext.injectedPrefix
+        ? lastTriggerDocContext.currentLinePrefix.slice(
+              0,
+              lastTriggerDocContext.currentLinePrefix.length -
+                  lastTriggerDocContext.injectedPrefix.length
+          )
+        : lastTriggerDocContext.currentLinePrefix
+
     // There are 2 reasons we can reuse a candidate: typing-as-suggested or change-of-indentation.
-    const lastTriggerCurrentLinePrefix = lastTriggerDocContext.currentLinePrefix
-    const isIndentation = isWhitespace(currentLinePrefix) && currentLinePrefix.startsWith(lastTriggerCurrentLinePrefix)
+
+    const isIndentation =
+        isWhitespace(currentLinePrefix) &&
+        currentLinePrefix.startsWith(lastTriggerCurrentLinePrefixInDocument)
     const isDeindentation =
-        isWhitespace(lastTriggerCurrentLinePrefix) && lastTriggerCurrentLinePrefix.startsWith(currentLinePrefix)
+        isWhitespace(lastTriggerCurrentLinePrefixInDocument) &&
+        lastTriggerCurrentLinePrefixInDocument.startsWith(currentLinePrefix)
     const isIndentationChange = currentLineSuffix === '' && (isIndentation || isDeindentation)
     let didAcceptCompletion = false
 
-    const itemsToReuse = lastCandidate.result.items
+    let itemsToReuse = lastCandidate.result.items
         .map((item): InlineCompletionItemWithAnalytics | undefined => {
             // Allow reuse if the user is (possibly) typing forward as suggested by the last
             // candidate completion. We still need to filter the candidate items to see which ones
             // the user's typing actually follows.
-            const lastCompletion = lastTriggerCurrentLinePrefix + item.insertText
+            const lastCompletion = lastTriggerCurrentLinePrefixInDocument + item.insertText
             const isTypingAsSuggested =
-                lastCompletion.startsWith(currentLinePrefix) && position.isAfterOrEqual(lastTriggerPosition)
+                lastCompletion.startsWith(currentLinePrefix) &&
+                position.isAfterOrEqual(lastTriggerPosition)
+
             if (isTypingAsSuggested) {
                 const remaining = lastCompletion.slice(currentLinePrefix.length)
+                const alreadyInsertedText = item.insertText.slice(0, -remaining.length)
+
+                // Shift the range by the already inserted characters to the right
+                const prevRange = item.range
+                let newRange: vscode.Range | undefined
+                if (prevRange) {
+                    const rangeShift = alreadyInsertedText.length
+                    newRange = new vscode.Range(
+                        prevRange.start.line,
+                        prevRange.start.character + rangeShift,
+                        prevRange.end.line,
+                        prevRange.end.character + rangeShift
+                    )
+                }
 
                 // When the remaining text is empty, the user has forward-typed the full text of the
                 // completion. We mark this as an accepted completion.
                 if (remaining.length === 0) {
                     didAcceptCompletion = true
-                    handleDidAcceptCompletionItem?.(
-                        lastCandidate.result.logId,
-                        item,
-                        getRequestParamsFromLastCandidate(document, lastCandidate)
-                    )
+                    handleDidAcceptCompletionItem?.({
+                        requestParams: getRequestParamsFromLastCandidate(document, lastCandidate),
+                        logId: lastCandidate.result.logId,
+                        analyticsItem: item,
+                        trackedRange: item.range,
+                    })
                     return undefined
                 }
 
                 // Detect partial acceptance of the last candidate
-                const acceptedLength = currentLinePrefix.length - lastTriggerCurrentLinePrefix.length
+                const acceptedLength =
+                    currentLinePrefix.length - lastTriggerCurrentLinePrefixInDocument.length
                 if (isPartialAcceptance(item.insertText, acceptedLength)) {
-                    handleDidPartiallyAcceptCompletionItem?.(lastCandidate.result.logId, item, acceptedLength)
+                    handleDidPartiallyAcceptCompletionItem?.(
+                        {
+                            logId: lastCandidate.result.logId,
+                            analyticsItem: item,
+                        },
+                        acceptedLength
+                    )
                 }
 
-                return { ...item, insertText: remaining }
+                return { ...item, insertText: remaining, range: newRange }
             }
 
             // Allow reuse if only the indentation (leading whitespace) has changed.
             if (isIndentationChange) {
+                if (isIndentation) {
+                    const leadingWhitespace = item.insertText.match(/^\s*/)?.[0] ?? ''
+
+                    /**
+                     * Consider the following completion:
+                     *
+                     * lastTriggerCurrentLinePrefixInDocument = '\t'
+                     * insertText = '\t\tconst foo = 1'
+                     * currentLinePrefix = '\t\t\t\t'
+                     *
+                     *
+                     * The user types on a new line `\t`, the completion is generated in the background
+                     * `\t\tconst foo = 1`, while user adds `\t\t\t` to the current line.
+                     * As a result all `\t` should be removed from the completion as user typed them forward
+                     * as suggested. The resuling completion `const foo = 1`.
+                     */
+                    const whiteSpaceToRemove = Math.min(
+                        currentLinePrefix.length - lastTriggerCurrentLinePrefixInDocument.length,
+                        leadingWhitespace.length
+                    )
+
+                    return {
+                        ...item,
+                        insertText: item.insertText.slice(whiteSpaceToRemove),
+                    }
+                }
+
                 return {
                     ...item,
-                    insertText: lastTriggerCurrentLinePrefix.slice(currentLinePrefix.length) + item.insertText,
+                    insertText: item.insertText,
                 }
             }
 
             return undefined
         })
         .filter(isDefined)
+
+    itemsToReuse = itemsToReuse.map(item => {
+        // Additionally to the suffix being different, the prefix might also have changed (e.g. when
+        // using something like semicolon insertion on save with some JavaScript formatters.
+        const lastCurrentLineSuffixLength = lastCandidate.lastTriggerDocContext.currentLineSuffix.length
+        const currentLineSuffixLength = docContext.currentLineSuffix.length
+        if (lastCurrentLineSuffixLength < currentLineSuffixLength && item.range) {
+            const insertedSuffix = docContext.currentLineSuffix.slice(lastCurrentLineSuffixLength)
+            if (item.insertText.endsWith(insertedSuffix)) {
+                const difference = currentLineSuffixLength - lastCurrentLineSuffixLength
+                return {
+                    ...item,
+                    range: new vscode.Range(
+                        item.range.start.line,
+                        item.range.start.character,
+                        item.range.end.line,
+                        item.range.end.character + difference
+                    ),
+                }
+            }
+        }
+
+        return item
+    })
 
     // Ensure that when one completion was marked as accepted, we don't reuse any others
     if (didAcceptCompletion) {
@@ -128,8 +255,11 @@ function isWhitespace(s: string): boolean {
 }
 
 // Count a completion as partially accepted, when at least one word of the completion was typed
+// To avoid sending partial completion events on every keystroke after the first word, we only
+// return true here after every completed word.
 function isPartialAcceptance(insertText: string, insertedLength: number): boolean {
-    const match = insertText.match(/(\w+)/)
+    const insertedText = insertText.slice(0, insertedLength)
+    const match = insertedText.match(/(\w+)\W+$/)
     const endOfFirstWord = match?.index === undefined ? null : match.index + match[0]!.length
     if (endOfFirstWord === null) {
         return false
@@ -145,11 +275,6 @@ export function getRequestParamsFromLastCandidate(
         document,
         position: lastCandidate.lastTriggerPosition,
         docContext: lastCandidate.lastTriggerDocContext,
-        selectedCompletionInfo: lastCandidate.lastTriggerSelectedInfoItem
-            ? {
-                  range: new vscode.Range(0, 0, 0, 0),
-                  text: lastCandidate.lastTriggerSelectedInfoItem,
-              }
-            : undefined,
+        selectedCompletionInfo: lastCandidate.lastTriggerSelectedCompletionInfo,
     }
 }

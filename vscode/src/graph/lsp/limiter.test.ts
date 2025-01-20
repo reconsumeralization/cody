@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AbortError, TimeoutError } from '@sourcegraph/cody-shared/src/sourcegraph-api/errors'
+import { AbortError, TimeoutError } from '@sourcegraph/cody-shared'
 
-import { createLimiter, Limiter } from './limiter'
+import { type Limiter, createLimiter } from './limiter'
 
 describe('limiter', () => {
     it('should limit the execution of promises', async () => {
-        const limiter = createLimiter(2, 100)
+        const limiter = createLimiter({ limit: 2, timeout: 100 })
 
         const req1 = createMockRequest(limiter)
         const req2 = createMockRequest(limiter)
@@ -28,7 +28,7 @@ describe('limiter', () => {
     })
 
     it('should abort pending promises', async () => {
-        const limiter = createLimiter(1, 100)
+        const limiter = createLimiter({ limit: 1, timeout: 100 })
 
         const req1 = createMockRequest(limiter)
         const req2 = createMockRequest(limiter)
@@ -54,7 +54,7 @@ describe('limiter', () => {
         })
 
         it('should time out a request if it takes too long', async () => {
-            const limiter = createLimiter(1, 100)
+            const limiter = createLimiter({ limit: 1, timeout: 100 })
 
             const req1 = createMockRequest(limiter)
             const req2 = createMockRequest(limiter)
@@ -81,7 +81,13 @@ function createMockRequest<T>(limiter: Limiter): {
 } {
     const abortController = new AbortController()
     let resolve: ((val: T) => void) | null
-    const promise = limiter<T>(async () => new Promise(_resolve => (resolve = _resolve)), abortController.signal)
+    const promise = limiter<T>(
+        async () =>
+            new Promise(_resolve => {
+                resolve = _resolve
+            }),
+        abortController.signal
+    )
 
     return {
         resolve(val: T) {

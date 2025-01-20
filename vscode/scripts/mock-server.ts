@@ -1,4 +1,4 @@
-import http from 'http'
+import http from 'node:http'
 
 // A generic server that you can extend to mock completion based APIs. This is
 // mainly used as a stop-gap while we're waiting for proper access to some
@@ -36,7 +36,6 @@ http.createServer((req, res) => {
         console.log()
         console.log('>', req.url)
         console.log(payload)
-
         const mockedResponse = (endpoints as any)[req.url as any]
         if (mockedResponse) {
             console.log('<', mockedResponse)

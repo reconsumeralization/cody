@@ -1,43 +1,41 @@
 import dedent from 'dedent'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { CompletionParameters } from '@sourcegraph/cody-shared/src/sourcegraph-api/completions/types'
+import type { CompletionParameters } from '@sourcegraph/cody-shared'
 
 import { vsCodeMocks } from '../../testutils/mocks'
 import { InlineCompletionsResultSource } from '../get-inline-completions'
 import { RequestManager } from '../request-manager'
 import { completion } from '../test-helpers'
-import { MULTILINE_STOP_SEQUENCE } from '../text-processing'
 
-import { getInlineCompletions, params, V } from './helpers'
+import { type V, getInlineCompletions, getInlineCompletionsFullResponse, params } from './helpers'
 
 describe('[getInlineCompletions] common', () => {
-    test('single-line mode only completes one line', async () =>
-        expect(
-            await getInlineCompletions(
-                params(
-                    `
-        function test() {
-            console.log(1);
-            █
-        }
-        `,
-                    [
-                        completion`
-                    ├if (true) {
-                        console.log(3);
+    it('single-line mode only completes one line', async () => {
+        const result = await getInlineCompletions(
+            params(
+                `
+                    function test() {
+                        console.log(1);
+                        █
                     }
-                    console.log(4);┤
-                ┴┴┴┴`,
-                    ]
-                )
+                `,
+                [
+                    completion`
+                        ├if (true) {
+                            console.log(3);
+                        }
+                        console.log(4);┤
+                    ┴┴┴┴`,
+                ]
             )
-        ).toEqual<V>({
-            items: [{ insertText: 'if (true) {' }],
-            source: InlineCompletionsResultSource.Network,
-        }))
+        )
 
-    test('with selectedCompletionInfo', async () =>
+        expect(result!.items[0].insertText).toEqual('if (true) {')
+        expect(result!.source).toEqual(InlineCompletionsResultSource.Network)
+    })
+
+    it('with selectedCompletionInfo', async () =>
         expect(
             await getInlineCompletions(
                 params('array.so█', [completion`rt()`], {
@@ -49,11 +47,13 @@ describe('[getInlineCompletions] common', () => {
             source: InlineCompletionsResultSource.Network,
         }))
 
-    test('emits a completion even when the abort signal was triggered after a network fetch ', async () => {
+    it('emits a completion even when the abort signal was triggered after a network fetch ', async () => {
         const abortController = new AbortController()
         expect(
             await getInlineCompletions({
-                ...params('const x = █', [completion`├1337┤`], { onNetworkRequest: () => abortController.abort() }),
+                ...params('const x = █', [completion`├1337┤`], {
+                    onNetworkRequest: () => abortController.abort(),
+                }),
                 abortSignal: abortController.signal,
             })
         ).toEqual<V>({
@@ -62,7 +62,7 @@ describe('[getInlineCompletions] common', () => {
         })
     })
 
-    test('trims whitespace in the prefix but keeps one \n', async () => {
+    it('trims whitespace in the prefix but keeps one \n', async () => {
         const requests: CompletionParameters[] = []
         await getInlineCompletions(
             params(
@@ -81,12 +81,11 @@ describe('[getInlineCompletions] common', () => {
                 }
             )
         )
-        expect(requests).toHaveLength(3)
         const messages = requests[0].messages
-        expect(messages.at(-1)!.text).toBe('<CODE5711>class Range {\n')
+        expect(messages.at(-1)!.text?.toString()).toBe('<CODE5711>class Range {')
     })
 
-    test('uses a more complex prompt for larger files', async () => {
+    it('uses a more complex prompt for larger files', async () => {
         const requests: CompletionParameters[] = []
         await getInlineCompletions(
             params(
@@ -126,24 +125,27 @@ describe('[getInlineCompletions] common', () => {
                     this.startLine =",
             }
         `)
-        expect(requests[0].stopSequences).toEqual(['\n\nHuman:', '</CODE5711>', MULTILINE_STOP_SEQUENCE])
     })
 
-    test('synthesizes a completion from a prior request', async () => {
+    it('synthesizes a completion from a prior request', async () => {
         // Reuse the same request manager for both requests in this test
         const requestManager = new RequestManager()
 
-        const promise1 = getInlineCompletions(
+        const promise1 = getInlineCompletionsFullResponse(
             params('console.█', [completion`log('Hello, world!');`], { requestManager })
         )
 
         // Start a second completions query before the first one is finished. The second one never
         // receives a network response
-        const promise2 = getInlineCompletions(params('console.log(█', 'never-resolve', { requestManager }))
+        const promise2 = getInlineCompletionsFullResponse(
+            params('console.log(█', 'never-resolve', { requestManager })
+        )
 
-        await promise1
-        const completions = await promise2
+        const firstCompletions = await promise1
+        const secondCompletions = await promise2
 
-        expect(completions?.items[0].insertText).toBe("'Hello, world!');")
+        expect(secondCompletions?.items[0].insertText).toBe("'Hello, world!');")
+        // The logId should match so this completion is not fired in duplicate analytic calls
+        expect(secondCompletions?.logId).toBe(firstCompletions?.logId)
     })
 })

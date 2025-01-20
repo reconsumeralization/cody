@@ -1,11 +1,7 @@
 packages:
-  - e2e-inspector
-  - e2e
   - agent
+  - agent/src/__tests__/*
   - cli
   - lib/*
-  - slack
   - vscode
   - web
-  - completions-review-tool
-  - snippet-extractor

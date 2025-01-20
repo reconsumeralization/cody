@@ -1,4 +1,4 @@
-export interface IncrementalTextConsumer {
+interface IncrementalTextConsumer {
     /**
      * Push new text to the consumer.
      * Text should be incremental but still include the previous text. E.g. "Hel" -> "Hello" -> "Hello, world!"
@@ -9,6 +9,11 @@ export interface IncrementalTextConsumer {
      * Notify the consumer that the text is complete.
      */
     close: () => void
+
+    /**
+     * Notify the consumer about an error.
+     */
+    error?: (error: Error) => void
 }
 
 // Maximum/minimum amount of time to wait between character chunks
@@ -17,18 +22,12 @@ const MIN_DELAY_MS = 5
 
 const MIN_CHAR_CHUNK_SIZE = 1
 
+/**
+ * Typewriter class that implements the IncrementalTextConsumer interface.
+ * Used to simulate a typing effect by providing text incrementally.
+ */
 export class Typewriter implements IncrementalTextConsumer {
     private upstreamClosed = false
-    private resolveFinished: (s: string) => void = () => {}
-    private rejectFinished: (err: any) => void = () => {}
-
-    /**
-     * Promise indicating the typewriter is done "typing". Resolved with the
-     * complete text when available; rejects if the typewriter was stopped
-     * prematurely.
-     */
-    public readonly finished: Promise<string>
-
     private text = ''
     private i = 0
     private interval: ReturnType<typeof setInterval> | undefined
@@ -36,18 +35,20 @@ export class Typewriter implements IncrementalTextConsumer {
     /**
      * Creates a Typewriter which will buffer incremental text and pass it
      * through to `consumer` simulating a typing effect.
-     *
      * @param consumer the consumer to pipe "typing" through to.
      */
-    constructor(private readonly consumer: IncrementalTextConsumer) {
-        this.finished = new Promise((resolve, reject) => {
-            this.resolveFinished = resolve
-            this.rejectFinished = reject
-        })
+    constructor(private readonly consumer: IncrementalTextConsumer) {}
+
+    /**
+     * Gets the next valid slice point that won't break UTF-16 surrogate pairs
+     */
+    private getNextValidSlicePoint(currentIndex: number, increment: number): number {
+        const codePoints = Array.from(this.text)
+        const targetIndex = Math.min(codePoints.length, currentIndex + increment)
+        return codePoints.slice(0, targetIndex).join('').length
     }
 
     // IncrementalTextConsumer implementation. The "write" side of the pipe.
-
     public update(content: string): void {
         if (this.upstreamClosed) {
             throw new Error('Typewriter already closed')
@@ -89,10 +90,12 @@ export class Typewriter implements IncrementalTextConsumer {
          * This is an accepted trade-off in order to ensure we stay in sync with the incoming text.
          */
         const charChunkSize =
-            calculatedDelay < MIN_DELAY_MS ? Math.round(MIN_DELAY_MS / calculatedDelay) : MIN_CHAR_CHUNK_SIZE
+            calculatedDelay < MIN_DELAY_MS
+                ? Math.round(MIN_DELAY_MS / calculatedDelay)
+                : MIN_CHAR_CHUNK_SIZE
 
         this.interval = setInterval(() => {
-            this.i = Math.min(this.text.length, this.i + charChunkSize)
+            this.i = this.getNextValidSlicePoint(this.i, charChunkSize)
             this.consumer.update(this.text.slice(0, this.i))
 
             /** Clean up, notify when we have reached the end of the known remaining text. */
@@ -102,7 +105,6 @@ export class Typewriter implements IncrementalTextConsumer {
 
                 if (this.upstreamClosed) {
                     this.consumer.close()
-                    this.resolveFinished(this.text)
                 }
             }
         }, dynamicDelay)
@@ -113,7 +115,7 @@ export class Typewriter implements IncrementalTextConsumer {
     }
 
     /** Stop the typewriter, immediately emit any remaining text */
-    public stop(): void {
+    public stop(error?: Error): void {
         // Stop the animation
         if (this.interval) {
             clearInterval(this.interval)
@@ -125,10 +127,13 @@ export class Typewriter implements IncrementalTextConsumer {
         }
         // Clean up the consumer, finished promise.
         if (this.upstreamClosed) {
+            if (error) {
+                if (this.consumer.error) {
+                    this.consumer.error(error)
+                    return
+                }
+            }
             this.consumer.close()
-            this.resolveFinished(this.text)
-        } else {
-            this.rejectFinished(new Error('Typewriter stopped'))
         }
     }
 }

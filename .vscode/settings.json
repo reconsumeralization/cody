@@ -2,13 +2,12 @@
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true,
-    "**/.eslintcache": true,
     "**/.vscode-test": true,
     "**/.vscode-test-web": true,
-    "completions-review-tool/data/*": true
+    "**/.test": true
   },
   "files.exclude": {
-    "**/.eslintcache": true,
+    "node_modules": false,
     "**/.vscode-test": true,
     "**/.vscode-test-web": true
   },
@@ -21,20 +20,27 @@
   "typescript.tsc.autoDetect": "off",
   "typescript.tsdk": "node_modules/typescript/lib",
   "task.allowAutomaticTasks": "on",
-  "eslint.lintTask.enable": false,
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "biome.enabled": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.organizeImports": "never",
+    "source.organizeImports.biome": "explicit"
   },
-  "eslint.codeActionsOnSave.mode": "problems",
-  "eslint.options": { "cache": true },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.insertSpaces": true,
+  "cSpell.words": ["Supercompletion", "Supercompletions"],
+  "[javascript][javascriptreact][json][jsonc][typescript][typescriptreact][graphql]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "stylelint.vscode-stylelint"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
   },
-  "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "rust-analyzer.procMacro.ignored": { "napi-derive": ["napi"] }
 }

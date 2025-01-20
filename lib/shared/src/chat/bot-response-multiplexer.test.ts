@@ -1,17 +1,8 @@
-import assert from 'assert'
-
+import assert from 'node:assert'
 import { describe, it } from 'vitest'
+import { promise } from '../utils'
 
-import { BotResponseMultiplexer, BufferedBotResponseSubscriber } from './bot-response-multiplexer'
-
-function promise<T>(): [(value: T) => void, Promise<T>] {
-    let resolver
-    const promise = new Promise<T>(resolve => (resolver = resolve))
-    if (!resolver) {
-        throw new Error('unreachable')
-    }
-    return [resolver, promise]
-}
+import { BotResponseMultiplexer, type BotResponseSubscriber } from './bot-response-multiplexer'
 
 describe('BotResponseMultiplexer', () => {
     it('routes messages with no prefix to the default topic', async () => {
@@ -20,7 +11,7 @@ describe('BotResponseMultiplexer', () => {
         multiplexer.sub(BotResponseMultiplexer.DEFAULT_TOPIC, {
             onResponse(content): Promise<void> {
                 assert.strictEqual(content, 'hello, world')
-                published(undefined)
+                published()
                 return Promise.resolve()
             },
             onTurnComplete() {
@@ -229,10 +220,7 @@ and a donut
                 },
             })
         })
-
-        // eslint-disable-next-line no-void
         void multiplexer.publish("Tonight's menu: <")
-        // eslint-disable-next-line no-void
         void multiplexer.publish('food>hamburger\ndonuts</food>')
         const turnDone = multiplexer.notifyTurnComplete()
         finishedEating()
@@ -241,3 +229,32 @@ and a donut
         assert.deepStrictEqual(foodTopic, ['hamburger\ndonuts', ' ...BURP!'])
     })
 })
+
+/**
+ * A bot response subscriber that provides the entire bot response in one shot without
+ * surfacing incremental updates.
+ */
+class BufferedBotResponseSubscriber implements BotResponseSubscriber {
+    private buffer_: string[] = []
+
+    /**
+     * Creates a BufferedBotResponseSubscriber. `callback` is called once per
+     * turn with the bot's entire output provided in one shot. If the topic
+     * was not mentioned, `callback` is called with `undefined` signifying the
+     * end of a turn.
+     * @param callback the callback to handle content from the bot, if any.
+     */
+    constructor(private callback: (content: string | undefined) => Promise<void>) {}
+
+    // BotResponseSubscriber implementation
+
+    public onResponse(content: string): Promise<void> {
+        this.buffer_.push(content)
+        return Promise.resolve()
+    }
+
+    public async onTurnComplete(): Promise<void> {
+        await this.callback(this.buffer_.length ? this.buffer_.join('') : undefined)
+        this.buffer_ = []
+    }
+}

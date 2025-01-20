@@ -1,20 +1,23 @@
-import { Position, TextDocument } from 'vscode'
+import { type Position, Range, type TextDocument } from 'vscode'
+import type { Tree } from 'web-tree-sitter'
 
-import { dedupeWith } from '@sourcegraph/cody-shared/src/common'
+import {
+    type BrowserOrNodeResponse,
+    type CompletionResponseWithMetaData,
+    type DocumentContext,
+    dedupeWith,
+} from '@sourcegraph/cody-shared'
 
-import { DocumentContext } from '../get-current-doc-context'
-import { ItemPostProcessingInfo } from '../logger'
-import { getNodeAtCursorAndParents } from '../tree-sitter/ast-getters'
-import { asPoint, getCachedParseTreeForDocument } from '../tree-sitter/parse-tree-cache'
-import { getDocumentQuerySDK } from '../tree-sitter/query-sdk'
-import { Completion, InlineCompletionItem } from '../types'
-
-import { dropParserFields, parseCompletion, ParsedCompletion } from './parse-completion'
-import { truncateMultilineCompletion } from './truncate-multiline-completion'
-import { truncateParsedCompletion } from './truncate-parsed-completion'
+import { addAutocompleteDebugEvent } from '../../services/open-telemetry/debug-utils'
+import { getNodeAtCursorAndParents } from '../../tree-sitter/ast-getters'
+import { asPoint, getCachedParseTreeForDocument } from '../../tree-sitter/parse-tree-cache'
+import type { ItemPostProcessingInfo } from '../analytics-logger'
+import type { InlineCompletionItem } from '../types'
+import { type ParsedCompletion, dropParserFields } from './parse-completion'
+import { findLastAncestorOnTheSameRow } from './truncate-parsed-completion'
 import { collapseDuplicativeWhitespace, removeTrailingWhitespace, trimUntilSuffix } from './utils'
 
-export interface ProcessInlineCompletionsParams {
+interface ProcessInlineCompletionsParams {
     document: TextDocument
     position: Position
     docContext: DocumentContext
@@ -22,6 +25,8 @@ export interface ProcessInlineCompletionsParams {
 
 export interface InlineCompletionItemWithAnalytics extends ItemPostProcessingInfo, InlineCompletionItem {
     stopReason?: string
+    resolvedModel?: string
+    responseHeaders?: InlineCompletionResponseHeaders
 }
 
 /**
@@ -29,14 +34,16 @@ export interface InlineCompletionItemWithAnalytics extends ItemPostProcessingInf
  * which provider is chosen.
  */
 export function processInlineCompletions(
-    items: Completion[],
+    items: ParsedCompletion[],
     params: ProcessInlineCompletionsParams
 ): InlineCompletionItemWithAnalytics[] {
-    // Shared post-processing logic
-    const completionItems = items.map(item => processCompletion({ ...params, completion: item }))
+    addAutocompleteDebugEvent('enter', {
+        currentLinePrefix: params.docContext.currentLinePrefix,
+        text: items[0]?.insertText,
+    })
 
     // Remove low quality results
-    const visibleResults = removeLowQualityCompletions(completionItems)
+    const visibleResults = removeLowQualityCompletions(items)
 
     // Remove duplicate results
     const uniqueResults = dedupeWith(visibleResults, 'insertText')
@@ -44,108 +51,72 @@ export function processInlineCompletions(
     // Rank results
     const rankedResults = rankCompletions(uniqueResults)
 
+    addAutocompleteDebugEvent('exit', {
+        currentLinePrefix: params.docContext.currentLinePrefix,
+        text: rankedResults[0]?.insertText,
+    })
+
     return rankedResults.map(dropParserFields)
 }
 
-interface ProcessItemParams {
-    completion: Completion
+export interface ProcessItemParams {
     document: TextDocument
     position: Position
     docContext: DocumentContext
+    metadata?: CompletionResponseWithMetaData['metadata']
 }
 
-function processCompletion(params: ProcessItemParams): InlineCompletionItemWithAnalytics & ParsedCompletion {
-    const { completion, document, position, docContext } = params
-    const { prefix, suffix, currentLineSuffix, multilineTrigger } = docContext
+export function processCompletion(
+    completion: ParsedCompletion,
+    params: ProcessItemParams
+): ParsedCompletion {
+    const { document, position, docContext, metadata } = params
+    const { prefix, suffix, currentLineSuffix, multilineTrigger, multilineTriggerPosition } = docContext
+    let { insertText } = completion
 
-    if (typeof completion.content !== 'string') {
-        throw new TypeError('SnippetText not supported')
+    if (completion.insertText.length === 0) {
+        return completion
     }
 
-    // Append any eventual inline completion context item to the prefix if
-    // completeSuggestWidgetSelection is enabled.
-    let withInjectedPrefix = completion
     if (docContext.injectedPrefix) {
-        withInjectedPrefix = { ...completion, content: docContext.injectedPrefix + completion.content }
+        insertText = docContext.injectedPrefix + completion.insertText
     }
 
-    const completionItem: InlineCompletionItemWithAnalytics = {
-        insertText: withInjectedPrefix.content,
-        stopReason: withInjectedPrefix.stopReason,
+    if (insertText.length === 0) {
+        return completion
     }
 
-    if (completionItem.insertText.length === 0) {
-        return completionItem
-    }
-
-    const adjusted = adjustRangeToOverwriteOverlappingCharacters(completionItem, { position, currentLineSuffix })
-    const parsed: InlineCompletionItemWithAnalytics & ParsedCompletion = parseCompletion({
-        completion: adjusted,
-        document,
+    completion.range = getRangeAdjustedForOverlappingCharacters(completion, {
         position,
-        docContext,
-    })
-
-    let { insertText } = parsed
-    const initialLineCount = insertText.split('\n').length
-
-    const positionBeforeCursor = asPoint({
-        line: position.line,
-        character: Math.max(0, position.character - 1),
+        currentLineSuffix,
     })
 
     // Use the parse tree WITHOUT the pasted completion to get surrounding node types.
     // Helpful to optimize the completion AST triggers for higher CAR.
-    const parseTreeCache = getCachedParseTreeForDocument(document)
-    if (parseTreeCache) {
-        const captures = getNodeAtCursorAndParents(parseTreeCache.tree.rootNode, positionBeforeCursor)
-
-        if (captures.length > 0) {
-            const [atCursor, ...parents] = captures
-
-            parsed.nodeTypes = {
-                atCursor: atCursor.node.type,
-                parent: parents[0]?.node.type,
-                grandparent: parents[1]?.node.type,
-                greatGrandparent: parents[2]?.node.type,
-            }
-        }
-    }
+    completion.nodeTypes = getNodeTypesInfo({
+        position,
+        parseTree: getCachedParseTreeForDocument(document)?.tree,
+        multilineTriggerPosition,
+    })
 
     // Use the parse tree WITH the pasted completion to get surrounding node types.
     // Helpful to understand CAR for incomplete code snippets.
     // E.g., `const value = ` does not produce a valid AST, but `const value = 'someValue'` does
-    if (parsed.tree && parsed.points) {
-        const captures = getNodeAtCursorAndParents(parsed.tree.rootNode, positionBeforeCursor)
+    completion.nodeTypesWithCompletion = getNodeTypesInfo({
+        position,
+        parseTree: completion.tree,
+        multilineTriggerPosition,
+    })
 
-        if (captures.length > 0) {
-            const [atCursor, ...parents] = captures
-
-            parsed.nodeTypesWithCompletion = {
-                atCursor: atCursor.node.type,
-                parent: parents[0]?.node.type,
-                grandparent: parents[1]?.node.type,
-                greatGrandparent: parents[2]?.node.type,
-            }
-        }
-    }
+    // Assign the resolved model to `InlineCompletionItemWithAnalytics` to make it available
+    // for analytics events when completions are synthesized from cache.
+    completion.resolvedModel = metadata?.response?.headers.get('x-cody-resolved-model') || undefined
+    completion.responseHeaders = extractRelevantResponseHeaders(metadata?.response)
 
     if (multilineTrigger) {
-        // Use tree-sitter for truncation if `config.autocompleteExperimentalSyntacticPostProcessing` is enabled.
-        if (parsed.tree && getDocumentQuerySDK(document.languageId)) {
-            insertText = truncateParsedCompletion({ completion: parsed, document })
-            parsed.truncatedWith = 'tree-sitter'
-        } else {
-            insertText = truncateMultilineCompletion(insertText, prefix, suffix, document.languageId).text
-            parsed.truncatedWith = 'indentation'
-        }
-        const truncatedLineCount = insertText.split('\n').length
-        parsed.lineTruncatedCount = initialLineCount - truncatedLineCount
-
         insertText = removeTrailingWhitespace(insertText)
-    }
-
-    if (!multilineTrigger) {
+    } else {
+        // TODO: move to parse-and-truncate to have one place where truncation happens
         // Only keep a single line in single-line completions mode
         const newLineIndex = insertText.indexOf('\n')
         if (newLineIndex !== -1) {
@@ -159,7 +130,79 @@ function processCompletion(params: ProcessItemParams): InlineCompletionItemWithA
     // Trim start and end of the completion to remove all trailing whitespace.
     insertText = insertText.trimEnd()
 
-    return { ...parsed, insertText }
+    return { ...completion, insertText }
+}
+
+const RESPONSE_HEADERS_TO_SAVE = [
+    'fireworks-cached-prompt-tokens',
+    'fireworks-num-concurrent-requests',
+    'fireworks-prefill-duration',
+    'fireworks-prefill-queue-duration',
+    'fireworks-prompt-tokens',
+    'fireworks-server-time-to-first-token',
+    'fireworks-speculation-matched-tokens',
+    'x-upstream-time-to-first-token',
+] as const
+
+type ResponseHeaderName = (typeof RESPONSE_HEADERS_TO_SAVE)[number]
+export type InlineCompletionResponseHeaders = Partial<Record<ResponseHeaderName, string>>
+
+function extractRelevantResponseHeaders(
+    response?: BrowserOrNodeResponse
+): InlineCompletionResponseHeaders | undefined {
+    if (!response) {
+        return undefined
+    }
+
+    const extractedHeaders: Record<string, string> = {}
+
+    for (const header of RESPONSE_HEADERS_TO_SAVE) {
+        const value = response.headers.get(header)
+        if (value) {
+            extractedHeaders[header] = value
+        }
+    }
+
+    return Object.keys(extractedHeaders).length > 0 ? extractedHeaders : undefined
+}
+
+interface GetNodeTypesInfoParams {
+    position: Position
+    parseTree?: Tree
+    multilineTriggerPosition: Position | null
+}
+
+function getNodeTypesInfo(
+    params: GetNodeTypesInfoParams
+): InlineCompletionItemWithAnalytics['nodeTypes'] | undefined {
+    const { position, parseTree, multilineTriggerPosition } = params
+
+    const positionBeforeCursor = asPoint({
+        line: position.line,
+        character: Math.max(0, position.character - 1),
+    })
+
+    if (parseTree) {
+        const captures = getNodeAtCursorAndParents(parseTree.rootNode, positionBeforeCursor)
+
+        if (captures.length > 0) {
+            const [atCursor, ...parents] = captures
+            const lastAncestorOnTheSameLine = findLastAncestorOnTheSameRow(
+                parseTree.rootNode,
+                asPoint(multilineTriggerPosition || position)
+            )
+
+            return {
+                atCursor: atCursor.node.type,
+                parent: parents[0]?.node.type,
+                grandparent: parents[1]?.node.type,
+                greatGrandparent: parents[2]?.node.type,
+                lastAncestorOnTheSameLine: lastAncestorOnTheSameLine?.type,
+            }
+        }
+    }
+
+    return undefined
 }
 
 interface AdjustRangeToOverwriteOverlappingCharactersParams {
@@ -175,18 +218,28 @@ interface AdjustRangeToOverwriteOverlappingCharactersParams {
  * adjusted to span the `)` so it is overwritten by the `insertText` (so that we don't end up with
  * the invalid `function sort(array) {)`).
  */
-export function adjustRangeToOverwriteOverlappingCharacters(
+export function getRangeAdjustedForOverlappingCharacters(
     item: InlineCompletionItem,
     { position, currentLineSuffix }: AdjustRangeToOverwriteOverlappingCharactersParams
-): InlineCompletionItem {
-    // TODO(sqs): This is a very naive implementation that will not work for many cases. It always
-    // just clobbers the rest of the line.
+): InlineCompletionItem['range'] {
+    const matchingSuffixLength = getMatchingSuffixLength(item.insertText, currentLineSuffix)
 
-    if (!item.range && currentLineSuffix !== '') {
-        return { ...item, range: { start: position, end: position.translate(undefined, currentLineSuffix.length) } }
+    if (!item.range && currentLineSuffix !== '' && matchingSuffixLength !== 0) {
+        return new Range(position, position.translate(undefined, matchingSuffixLength))
     }
 
-    return item
+    return undefined
+}
+
+export function getMatchingSuffixLength(insertText: string, currentLineSuffix: string): number {
+    let j = 0
+    for (let i = 0; i < insertText.length; i++) {
+        if (insertText[i] === currentLineSuffix[j]) {
+            j++
+        }
+    }
+
+    return j
 }
 
 function rankCompletions(completions: ParsedCompletion[]): ParsedCompletion[] {
@@ -204,10 +257,17 @@ function rankCompletions(completions: ParsedCompletion[]): ParsedCompletion[] {
     })
 }
 
+const PROMPT_CONTINUATIONS = [
+    // Anthropic style prompt continuation
+    /^(\n){0,2}Human:\ /,
+    // StarCoder style code example
+    /^(\/\/|\#) Path:\ /,
+]
 function removeLowQualityCompletions(completions: InlineCompletionItem[]): InlineCompletionItem[] {
-    return (
-        completions
-            // Filter out empty or single character completions.
-            .filter(c => c.insertText.trim().length > 1)
-    )
+    return completions.filter(c => {
+        const isEmptyOrSingleCharacterCompletion = c.insertText.trim().length <= 1
+        const isPromptContinuation = PROMPT_CONTINUATIONS.some(regex => c.insertText.match(regex))
+
+        return !isEmptyOrSingleCharacterCompletion && !isPromptContinuation
+    })
 }

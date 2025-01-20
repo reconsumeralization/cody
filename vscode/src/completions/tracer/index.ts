@@ -1,13 +1,17 @@
-import * as vscode from 'vscode'
+import type * as vscode from 'vscode'
 
-import { CompletionParameters } from '@sourcegraph/cody-shared/src/sourcegraph-api/completions/types'
+import type { CompletionParameters } from '@sourcegraph/cody-shared'
 
-import { GetContextResult } from '../context/context'
-import { InlineCompletionsResult, TriggerKind } from '../get-inline-completions'
-import { CompletionProviderTracerResultData, Provider } from '../providers/provider'
+import type { GetContextResult } from '../context/context-mixer'
+import type { InlineCompletionsResult, TriggerKind } from '../get-inline-completions'
+import type {
+    CompletionProviderTracerResultData,
+    GenerateCompletionsOptions,
+    Provider,
+} from '../providers/shared/provider'
 
 /**
- * Traces invocations of {@link CodyCompletionItemProvider.provideInlineCompletionItems}.
+ * Traces invocations of {@link InlineCompletionItemProvider.provideInlineCompletionItems}.
  *
  * The tracer API assumes that only a single in-flight completion request can exist at a time.
  *
@@ -30,7 +34,7 @@ export interface ProvideInlineCompletionsItemTraceData {
         triggerKind: TriggerKind
         selectedCompletionInfo?: vscode.SelectedCompletionInfo
     }
-    completers?: Provider['options'][]
+    completers?: (Provider['options'] & GenerateCompletionsOptions & { completionIntent?: string })[]
 
     /**
      * @todo Make this support recording more than 1 call to a completion provider.
@@ -41,4 +45,6 @@ export interface ProvideInlineCompletionsItemTraceData {
     context?: GetContextResult | null
     result?: InlineCompletionsResult | null
     error?: string
+    startTime?: number
+    modTime?: number
 }

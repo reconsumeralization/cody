@@ -1,13 +1,11 @@
 import dedent from 'dedent'
 import { describe, expect, it } from 'vitest'
 
-import { CompletionParameters } from '@sourcegraph/cody-shared/src/sourcegraph-api/completions/types'
-
 import { range } from '../../testutils/textDocument'
 import { InlineCompletionsResultSource } from '../get-inline-completions'
 import { completion } from '../test-helpers'
 
-import { getInlineCompletions, params, V } from './helpers'
+import { type Params, type V, getInlineCompletions, params } from './helpers'
 
 describe('[getInlineCompletions] triggers', () => {
     describe('singleline', () => {
@@ -25,7 +23,7 @@ describe('[getInlineCompletions] triggers', () => {
 
         it('middle of line', async () => {
             const result = await getInlineCompletions(
-                params('function bubbleSort(█)', [completion`array) {`, completion`items) {`])
+                params('function bubbleSort(█)', [completion`array) {`])
             )
 
             expect(
@@ -33,10 +31,7 @@ describe('[getInlineCompletions] triggers', () => {
                     insertText: item.insertText,
                     range: item.range,
                 }))
-            ).toEqual([
-                { insertText: 'array) {', range: range(0, 20, 0, 21) },
-                { insertText: 'items) {', range: range(0, 20, 0, 21) },
-            ])
+            ).toEqual([{ insertText: 'array) {', range: range(0, 20, 0, 21) }])
         })
 
         describe('same line suffix behavior', () => {
@@ -49,130 +44,64 @@ describe('[getInlineCompletions] triggers', () => {
     })
 
     describe('multiline', () => {
+        function isMultiline(code: string, config?: Params): boolean {
+            return Boolean(params(code, [], config).docContext.multilineTrigger)
+        }
+
         it('triggers a multi-line completion at the start of a block', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('function bubbleSort() {\n  █', [], {
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeMultiLine()
+            expect(isMultiline('function bubbleSort() {\n  █')).toBe(true)
         })
 
         it('does not trigger a multi-line completion at a function call', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('bar(█)', [], {
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeSingleLine()
+            expect(isMultiline('bar(█)')).toBe(false)
         })
 
         it('does not trigger a multi-line completion at a method call', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('foo.bar(█)', [], {
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeSingleLine()
+            expect(isMultiline('foo.bar(█)')).toBe(false)
         })
 
         describe('does not trigger a multi-line completion if a block already has content', () => {
             it('for a non-empty current line', async () => {
-                const requests: CompletionParameters[] = []
-                await getInlineCompletions(
-                    params(
-                        dedent`
-                        function myFunction() {█
+                const code = dedent`
+                    function myFunction() {█
 
-                            console.log('three')
-                        }
-                    `,
-                        [],
-                        {
-                            onNetworkRequest(request) {
-                                requests.push(request)
-                            },
-                        }
-                    )
-                )
-                expect(requests).toBeSingleLine()
+                        console.log('three')
+                    }
+                `
+
+                expect(isMultiline(code)).toBe(false)
             })
 
             it('for an empty current line', async () => {
-                const requests: CompletionParameters[] = []
-                await getInlineCompletions(
-                    params(
-                        dedent`
+                const code = dedent`
                         function myFunction() {
                             █
 
                             console.log('three')
                         }
-                    `,
-                        [],
-                        {
-                            onNetworkRequest(request) {
-                                requests.push(request)
-                            },
-                        }
-                    )
-                )
-                expect(requests).toBeSingleLine()
+                    `
+                expect(isMultiline(code)).toBe(false)
             })
         })
 
         it('triggers a multi-line completion at a method declarations', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('method.hello () {█', [], {
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeMultiLine()
+            expect(isMultiline('method.hello () {█')).toBe(true)
         })
 
         it('does not support multi-line completion on unsupported languages', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('function looksLegit() {\n  █', [], {
-                    languageId: 'elixir',
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeSingleLine()
+            expect(isMultiline('function looksLegit() {\n  █', { languageId: 'julia' })).toBe(false)
         })
 
         it('requires an indentation to start a block', async () => {
-            const requests: CompletionParameters[] = []
-            await getInlineCompletions(
-                params('function bubbleSort() {\n█', [], {
-                    onNetworkRequest(request) {
-                        requests.push(request)
-                    },
-                })
-            )
-            expect(requests).toBeSingleLine()
+            expect(isMultiline('function bubbleSort() {\n█')).toBe(false)
         })
     })
 
     describe('closing symbols', () => {
-        it.each(['{}█', '[]█', '()█'])('does not trigger for %s', async prompt =>
+        it.each(['{}█', '[]█', '()█', ';█'])('does not trigger for %s', async prompt =>
             expect(await getInlineCompletions(params(prompt, [completion`bar`]))).toEqual<V>(null)
         )
-        it.each(['{}\n█', '[]\n█', '()\n█'])('does trigger for %s', async prompt =>
+        it.each(['{}\n█', '[]\n█', '()\n█', ';\n█'])('does trigger for %s', async prompt =>
             expect(await getInlineCompletions(params(prompt, [completion`bar`]))).toEqual<V>({
                 items: [{ insertText: 'bar' }],
                 source: InlineCompletionsResultSource.Network,
@@ -185,7 +114,9 @@ describe('[getInlineCompletions] triggers', () => {
 
         it('does not trigger when the line above is empty', async () =>
             expect(
-                await getInlineCompletions(params('function foo(){\n console.log()\n}\n\n█', [completion`bar`]))
+                await getInlineCompletions(
+                    params('function foo(){\n console.log()\n}\n\n█', [completion`bar`])
+                )
             ).toBeNull())
 
         it('does trigger for empty document', async () =>
@@ -196,14 +127,18 @@ describe('[getInlineCompletions] triggers', () => {
 
         it('does trigger for empty line with non-empty line above', async () =>
             expect(
-                await getInlineCompletions(params('function log(foo: string){\n█', [completion`console.log(foo)`]))
+                await getInlineCompletions(
+                    params('function log(foo: string){\n█', [completion`console.log(foo)`])
+                )
             ).toEqual<V>({
                 items: [{ insertText }],
                 source: InlineCompletionsResultSource.Network,
             }))
 
         it('does trigger when cursor beyond character position zero', async () =>
-            expect(await getInlineCompletions(params('\n   █', [completion`console.log(foo)`]))).toEqual<V>({
+            expect(
+                await getInlineCompletions(params('\n   █', [completion`console.log(foo)`]))
+            ).toEqual<V>({
                 items: [{ insertText }],
                 source: InlineCompletionsResultSource.Network,
             }))

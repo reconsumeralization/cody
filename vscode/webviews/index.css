@@ -1,5 +1,13 @@
-@import '@sourcegraph/cody-ui/src/index.css';
 @import '@vscode/codicons/dist/codicon';
+@import url(./utils/highlight.css);
+@import url(./components/shadcn/shadcn.css);
+@import url(./themes/index.css);
+
+@font-face {
+    font-family: cody-icons;
+    font-display: block;
+    src: url('../resources/cody-icons.woff') format('woff');
+}
 
 :root {
     /* Our syntax highlighter expects a dark code background color, regardless of the VS Code color
@@ -9,20 +17,21 @@
 }
 
 #root {
+    height: 100%;
     margin: 0 auto;
     font-family: var(--vscode-font-family);
     color: var(--vscode-sideBar-foreground);
     background-color: var(--vscode-sideBar-background);
-    height: 100%;
     /* Override VS Code Webview Toolkit elements */
     --border-width: none;
 }
 
 html,
 body {
-    height: 100%;
     margin: 0;
     padding: 0;
+    height: 100%;
+    background-color: var(--vscode-sideBar-background);
 }
 
 a {
@@ -48,3 +57,4 @@ a:hover {
 .cody-chat-error > span {
     font-weight: bold;
 }
+

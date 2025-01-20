@@ -1,49 +1,138 @@
-import { TextDocument } from 'vscode'
+import type { TextDocument } from 'vscode'
+import type { Point, SyntaxNode } from 'web-tree-sitter'
 
-import { getCachedParseTreeForDocument } from '../tree-sitter/parse-tree-cache'
-import { getDocumentQuerySDK } from '../tree-sitter/query-sdk'
+import { addAutocompleteDebugEvent } from '../../services/open-telemetry/debug-utils'
+import { getCachedParseTreeForDocument } from '../../tree-sitter/parse-tree-cache'
 
-import { ParsedCompletion } from './parse-completion'
+import type { DocumentContext } from '@sourcegraph/cody-shared'
+import { type ParsedCompletion, parseCompletion } from './parse-completion'
+import { BRACKET_PAIR, type OpeningBracket } from './utils'
 
 interface CompletionContext {
     completion: ParsedCompletion
     document: TextDocument
+    docContext: DocumentContext
 }
 
 /**
- * Truncates the `insertText` of a `ParsedCompletion` based on the syntactic structure
- * of the code in a given `TextDocument`. Currently supports only JavaScript and TypeScript.
- *
- * Uses `tree-sitter` to query specific code blocks for contextual truncation.
- * Returns the original `insertText` if no truncation is needed or if syntactic post-processing isn't enabled.
+ * Inserts missing closing brackets in the completion text.
+ * This handles cases where a missing bracket breaks the incomplete parse-tree.
  */
-export function truncateParsedCompletion(context: CompletionContext): string {
-    const { completion, document } = context
+export function insertMissingBrackets(text: string): string {
+    const openingStack: OpeningBracket[] = []
+    const bracketPairs = Object.entries(BRACKET_PAIR)
 
-    const parseTreeCache = getCachedParseTreeForDocument(document)
-    const documentQuerySDK = getDocumentQuerySDK(context.document.languageId)
+    for (const char of text) {
+        const bracketPair = bracketPairs.find(([_, closingBracket]) => closingBracket === char)
 
-    if (!completion.tree || !completion.points || !parseTreeCache || !documentQuerySDK) {
-        throw new Error('Expected completion and document to have tree-sitter data for truncation')
-    }
-
-    const { tree, points } = completion
-
-    const [captureGroup] = documentQuerySDK.queries.blocks.getFirstMultilineBlockForTruncation(
-        tree.rootNode,
-        points?.trigger || points?.start,
-        points?.end
-    )
-
-    if (captureGroup) {
-        const overlap = findLargestSuffixPrefixOverlap(captureGroup.node.text, completion.insertText)
-
-        if (overlap) {
-            return overlap
+        if (bracketPair) {
+            if (openingStack.length > 0 && openingStack.at(-1) === bracketPair[0]) {
+                openingStack.pop()
+            }
+        } else if (Object.keys(BRACKET_PAIR).includes(char)) {
+            openingStack.push(char as OpeningBracket)
         }
     }
 
-    return completion.insertText
+    return (
+        text +
+        openingStack
+            .reverse()
+            .map(openBracket => BRACKET_PAIR[openBracket])
+            .join('')
+    )
+}
+
+interface TruncateParsedCompletionResult {
+    insertText: string
+    nodeToInsert?: SyntaxNode
+}
+
+/**
+ * Truncates the insert text of a parsed completion based on context.
+ * Uses tree-sitter to walk the parse-tree with the inserted completion and truncate it.
+ */
+export function truncateParsedCompletion(context: CompletionContext): TruncateParsedCompletionResult {
+    const { completion, document, docContext } = context
+    const parseTreeCache = getCachedParseTreeForDocument(document)
+
+    if (!completion.tree || !completion.points || !parseTreeCache) {
+        throw new Error('Expected completion and document to have tree-sitter data for truncation')
+    }
+
+    const { insertText, points } = completion
+    addAutocompleteDebugEvent('truncate', {
+        currentLinePrefix: docContext.currentLinePrefix,
+        text: insertText,
+        position: points.trigger || points.start,
+    })
+
+    let fixedCompletion = completion
+
+    const insertTextWithMissingBrackets = insertMissingBrackets(
+        docContext.currentLinePrefix + insertText
+    ).slice(docContext.currentLinePrefix.length)
+
+    if (insertTextWithMissingBrackets.length !== insertText.length) {
+        const updatedCompletion = parseCompletion({
+            completion: { insertText: insertTextWithMissingBrackets },
+            document,
+            docContext,
+        })
+
+        if (fixedCompletion?.tree) {
+            fixedCompletion = updatedCompletion
+        }
+    }
+
+    const nodeToInsert = findLastAncestorOnTheSameRow(
+        fixedCompletion.tree!.rootNode,
+        points.trigger || points.start
+    )
+
+    let textToInsert =
+        nodeToInsert?.grammarId === fixedCompletion.tree!.rootNode.grammarId
+            ? 'root'
+            : nodeToInsert?.text
+    if (textToInsert && document.getText().endsWith(textToInsert.slice(-100))) {
+        textToInsert = 'till the end of the document'
+    }
+
+    addAutocompleteDebugEvent('truncate node', {
+        nodeToInsertType: nodeToInsert?.type,
+        text: textToInsert,
+    })
+
+    if (nodeToInsert) {
+        const overlap = findLargestSuffixPrefixOverlap(nodeToInsert.text, insertText)
+        addAutocompleteDebugEvent('truncate overlap', {
+            currentLinePrefix: docContext.currentLinePrefix,
+            text: overlap ?? undefined,
+        })
+
+        if (overlap) {
+            return {
+                insertText: overlap,
+                nodeToInsert,
+            }
+        }
+    }
+
+    return { insertText, nodeToInsert: nodeToInsert || undefined }
+}
+
+export function findLastAncestorOnTheSameRow(root: SyntaxNode, position: Point): SyntaxNode | null {
+    const initial = root.namedDescendantForPosition(position)
+    let current = initial
+
+    while (
+        current?.parent?.startPosition.row === initial?.startPosition.row &&
+        current.parent.grammarId !== root.grammarId
+    ) {
+        current = current.parent
+    }
+
+    return current
 }
 
 /**

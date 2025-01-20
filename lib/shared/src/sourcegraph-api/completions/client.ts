@@ -1,84 +1,189 @@
-import { ConfigurationWithAccessToken } from '../../configuration'
+import type { Span } from '@opentelemetry/api'
 
-import { CompletionCallbacks, CompletionParameters, CompletionResponse, Event } from './types'
+import { type FireworksCodeCompletionParams, addClientInfoParams, getSerializedParams } from '../..'
+import { currentResolvedConfig } from '../../configuration/resolver'
+import { useCustomChatClient } from '../../llm-providers'
+import { recordErrorToSpan } from '../../tracing'
+
+import type {
+    CompletionCallbacks,
+    CompletionGeneratorValue,
+    CompletionParameters,
+    CompletionResponse,
+    Event,
+    SerializedCompletionParameters,
+} from './types'
 
 export interface CompletionLogger {
-    startCompletion(params: CompletionParameters | {}):
+    startCompletion(
+        params: CompletionParameters | unknown,
+        endpoint: string
+    ):
         | undefined
         | {
-              onError: (error: string) => void
-              onComplete: (response: string | CompletionResponse | string[] | CompletionResponse[]) => void
+              onError: (error: string, rawError?: unknown) => void
+              onComplete: (response: CompletionResponse) => void
               onEvents: (events: Event[]) => void
+              onFetch: (
+                  httpClientLabel: string,
+                  body: SerializedCompletionParameters | FireworksCodeCompletionParams
+              ) => void
           }
 }
 
-export type CompletionsClientConfig = Pick<
-    ConfigurationWithAccessToken,
-    'serverEndpoint' | 'accessToken' | 'debugEnable' | 'customHeaders'
->
+export interface CompletionRequestParameters {
+    apiVersion: number
+    interactionId?: string
+    customHeaders?: Record<string, string>
+}
 
 /**
  * Access the chat based LLM APIs via a Sourcegraph server instance.
+ *
+ * 🚨 SECURITY: It is the caller's responsibility to ensure context from
+ * all cody ignored files are removed before sending requests to the server.
  */
 export abstract class SourcegraphCompletionsClient {
     private errorEncountered = false
 
-    constructor(
-        protected config: CompletionsClientConfig,
-        protected logger?: CompletionLogger
-    ) {}
+    protected readonly isTemperatureZero = process.env.CODY_TEMPERATURE_ZERO === 'true'
 
-    public onConfigurationChange(newConfig: CompletionsClientConfig): void {
-        this.config = newConfig
+    constructor(protected logger?: CompletionLogger) {}
+
+    protected async completionsEndpoint(): Promise<string> {
+        return new URL('/.api/completions/stream', (await currentResolvedConfig()).auth.serverEndpoint)
+            .href
     }
 
-    protected get completionsEndpoint(): string {
-        return new URL('/.api/completions/stream', this.config.serverEndpoint).href
-    }
-
-    protected sendEvents(events: Event[], cb: CompletionCallbacks): void {
+    protected sendEvents(events: Event[], cb: CompletionCallbacks, span?: Span): void {
         for (const event of events) {
             switch (event.type) {
-                case 'completion':
+                case 'completion': {
+                    span?.addEvent('yield', { stopReason: event.stopReason })
                     cb.onChange(event.completion)
                     break
-                case 'error':
+                }
+                case 'error': {
+                    const error = new Error(event.error)
+                    if (span) {
+                        recordErrorToSpan(span, error)
+                    }
                     this.errorEncountered = true
-                    cb.onError(event.error)
+                    cb.onError(error)
                     break
-                case 'done':
+                }
+                case 'done': {
                     if (!this.errorEncountered) {
                         cb.onComplete()
                     }
+                    // reset errorEncountered for next request
+                    this.errorEncountered = false
+                    span?.end()
                     break
+                }
             }
         }
     }
 
-    public abstract stream(params: CompletionParameters, cb: CompletionCallbacks): () => void
-}
+    protected async prepareRequest(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters
+    ): Promise<{
+        url: URL
+        serializedParams: SerializedCompletionParameters
+        headerParams: Record<string, string>
+    }> {
+        const { apiVersion, interactionId } = requestParams
+        const serializedParams = await getSerializedParams(params)
+        const headerParams: Record<string, string> = {}
+        if (interactionId) {
+            headerParams['X-Sourcegraph-Interaction-ID'] = interactionId
+        }
+        const url = new URL(await this.completionsEndpoint())
+        if (apiVersion >= 1) {
+            url.searchParams.append('api-version', '' + apiVersion)
+        }
+        addClientInfoParams(url.searchParams)
+        return { url, serializedParams, headerParams }
+    }
 
-/**
- * A helper function that calls the streaming API but will buffer the result
- * until the stream has completed.
- */
-export function bufferStream(
-    client: Pick<SourcegraphCompletionsClient, 'stream'>,
-    params: CompletionParameters
-): Promise<string> {
-    return new Promise((resolve, reject) => {
-        let buffer = ''
+    protected abstract _fetchWithCallbacks(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters,
+        cb: CompletionCallbacks,
+        signal?: AbortSignal
+    ): Promise<void>
+
+    protected abstract _streamWithCallbacks(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters,
+        cb: CompletionCallbacks,
+        signal?: AbortSignal
+    ): Promise<void>
+
+    public async *stream(
+        params: CompletionParameters,
+        requestParams: CompletionRequestParameters,
+        signal?: AbortSignal
+    ): AsyncGenerator<CompletionGeneratorValue> {
+        // Provide default stop sequence for starchat models.
+        if (!params.stopSequences && params?.model?.startsWith('openaicompatible/starchat')) {
+            params.stopSequences = ['<|end|>']
+        }
+
+        // This is a technique to convert a function that takes callbacks to an async generator.
+        const values: Promise<CompletionGeneratorValue>[] = []
+        let resolve: ((value: CompletionGeneratorValue) => void) | undefined
+        values.push(
+            new Promise(r => {
+                resolve = r
+            })
+        )
+
+        const send = (value: CompletionGeneratorValue): void => {
+            resolve!(value)
+            values.push(
+                new Promise(r => {
+                    resolve = r
+                })
+            )
+        }
         const callbacks: CompletionCallbacks = {
-            onChange(text: string) {
-                buffer = text
+            onChange(text) {
+                send({ type: 'change', text })
             },
             onComplete() {
-                resolve(buffer)
+                send({ type: 'complete' })
             },
-            onError(message: string, code?: number) {
-                reject(new Error(code ? `${message} (code ${code})` : message))
+            onError(error, statusCode) {
+                send({ type: 'error', error, statusCode })
             },
         }
-        client.stream(params, callbacks)
-    })
+
+        // Custom chat clients for Non-Sourcegraph-supported providers.
+        const isNonSourcegraphProvider = await useCustomChatClient({
+            completionsEndpoint: await this.completionsEndpoint(),
+            params,
+            cb: callbacks,
+            logger: this.logger,
+            signal,
+        })
+
+        if (!isNonSourcegraphProvider) {
+            if (params.stream === false) {
+                await this._fetchWithCallbacks(params, requestParams, callbacks, signal)
+            } else {
+                await this._streamWithCallbacks(params, requestParams, callbacks, signal)
+            }
+        }
+
+        for (let i = 0; ; i++) {
+            const val = await values[i]
+            delete values[i]
+            yield val
+            if (val.type === 'complete' || val.type === 'error') {
+                break
+            }
+        }
+    }
 }
