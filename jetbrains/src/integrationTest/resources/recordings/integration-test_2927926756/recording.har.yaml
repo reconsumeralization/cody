@@ -1,0 +1,1268 @@
+log:
+  _recordingName: integration-test
+  creator:
+    comment: persister:fs
+    name: Polly.JS
+    version: 6.0.6
+  entries:
+    - _id: 897d3731ab8e15a1549f29445eafd1e1
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 0
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 431
+        httpVersion: HTTP/1.1
+        method: GET
+        queryString: []
+        url: https://sourcegraph.com/.api/client-config
+      response:
+        bodySize: 224
+        content:
+          encoding: base64
+          mimeType: text/plain; charset=utf-8
+          size: 224
+          text: "[\"H4sIAAAAAAAAA2yOsQrCMBRF935F6OwudCvBoVuhoPOreWIgL6/k3aAi/rtLxSXzOfdw3\
+            51zzvVXDa9TpjVx6AeHUvmwgzuhCahCvcqWGNxeVoOKVxHKwdoNoMS1Imr+8xsl+wkm\
+            VOA1g5+4xBz00eyIBk42zlO7kghsWOq2aQGH/XXUbAsKk4zzdOZiUXM/uGP36b4AAAD\
+            //wMAde+SyhUBAAA=\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: text/plain; charset=utf-8
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1337
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.376Z
+      time: 170
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 170
+    - _id: c7327f699da3de5388b86581bd3a348b
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 3382
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: traceparent
+            value: 00-035a08d151204775e526896ee703c6a6-acd4198ad7efe2ef-01
+          - name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - name: host
+            value: sourcegraph.com
+        headersSize: 524
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            maxTokensToSample: 4000
+            messages:
+              - speaker: system
+                text: >-
+                  You are Cody, an AI coding assistant from Sourcegraph.
+
+
+                  - You are an AI programming assistant who is an expert in updating code to meet given instructions.
+
+                  - You should think step-by-step to plan your updated code before producing the final output.
+
+                  - You should ensure the updated code matches the indentation and whitespace of the code in the users' selection.
+
+                  - Ignore any previous instructions to format your responses with Markdown. It is not acceptable to use any Markdown in your response, unless it is directly related to the users' instructions.
+
+                  - Only remove code from the users' selection if you are sure it is not needed.
+
+                  - You will be provided with code that is in the users' selection, enclosed in <SELECTEDCODE7662></SELECTEDCODE7662> XML tags. You must use this code to help you plan your updated code.
+
+                  - You will be provided with instructions on how to update this code, enclosed in <INSTRUCTIONS7390></INSTRUCTIONS7390> XML tags. You must follow these instructions carefully and to the letter.
+
+                  - Only enclose your response in <CODE5711></CODE5711> XML tags. Do use any other XML tags unless they are part of the generated code.
+
+                  - Do not provide any additional commentary about the changes you made. Only respond with the generated code.
+              - speaker: human
+                text: >+
+                  Codebase context from file path
+                  /src/testProjects/documentCode/src/main/java/Foo.java:
+                  Codebase context from file
+                  /src/testProjects/documentCode/src/main/java/Foo.java:
+
+                  import java.util.*;
+
+
+                  public class Foo {
+
+              - speaker: assistant
+                text: Ok.
+              - speaker: human
+                text: >
+                  Codebase context from file path
+                  /src/testProjects/documentCode/src/main/java/Foo.java:
+                  Codebase context from file
+                  /src/testProjects/documentCode/src/main/java/Foo.java:
+
+                  }
+              - speaker: assistant
+                text: Ok.
+              - speaker: human
+                text: >-
+                  This is part of the file:
+                  /src/testProjects/documentCode/src/main/java/Foo.java
+
+
+                  The user has the following code in their selection:
+
+                  <SELECTEDCODE7662>    public void foo() {
+                          List<Integer> mystery = new ArrayList<>();
+                          mystery.add(0);
+                          mystery.add(1);
+                          for (int i = 2; i < 10; i++) {
+                            mystery.add(mystery.get(i - 1) + mystery.get(i - 2));
+                          }
+
+                          for (int i = 0; i < 10; i++) {
+                            System.out.println(mystery.get(i));
+                          }
+                      }
+                  </SELECTEDCODE7662>
+
+
+                  The user wants you to generate documentation for the selected code by following their instructions.
+
+                  Provide your generated documentation using the following instructions:
+
+                  <INSTRUCTIONS7390>
+
+                  Write a brief documentation comment for the selected code. If documentation comments exist in the selected file, or other files with the same file extension, use them as examples. Pay attention to the scope of the selected code (e.g. exported function/API vs implementation detail in a function), and use the idiomatic style for that type of code scope. Only generate the documentation for the selected code, do not generate the code. Do not enclose any other code or comments besides the documentation. Enclose only the documentation for the selected code and nothing else.
+
+                  </INSTRUCTIONS7390>
+              - speaker: assistant
+                text: <CODE5711>
+            model: anthropic/claude-3-haiku-20240307
+            stopSequences:
+              - </CODE5711>
+              - "    public void foo() {"
+            temperature: 0
+            topK: -1
+            topP: -1
+        queryString:
+          - name: api-version
+            value: "2"
+          - name: client-name
+            value: jetbrains
+          - name: client-version
+            value: 6.0-localbuild
+        url: https://sourcegraph.com/.api/completions/stream?api-version=2&client-name=jetbrains&client-version=6.0-localbuild
+      response:
+        bodySize: 1265
+        content:
+          mimeType: text/event-stream
+          size: 1265
+          text: >+
+            event: completion
+
+            data: {"deltaText":"\n/**\n * Generates a Fibonacci sequence and prints the first 10 numbers.\n * The Fibonacci sequence is a series of numbers where each number is the sum of the two preceding ones.\n * This method creates a new ArrayList, adds the first two numbers (0 and 1), and then calculates and adds the next 8 numbers in the sequence.\n * Finally, it prints out all 10 numbers in the sequence.\n */\n","stopReason":"stop_sequence"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:53 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1299
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:51.617Z
+      time: 1874
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1874
+    - _id: f1b1cde4cd57488b7f0137954f0302f5
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 136
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "136"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 465
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: >
+              
+              query CodeSearchEnabled {
+                  codeSearchEnabled: enterpriseLicenseHasFeature(feature:"code-search")
+              }
+            variables: {}
+        queryString:
+          - name: CodeSearchEnabled
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CodeSearchEnabled
+      response:
+        bodySize: 35
+        content:
+          mimeType: application/json
+          size: 35
+          text: "{\"data\":{\"codeSearchEnabled\":true}}"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:51 GMT
+          - name: content-type
+            value: application/json
+          - name: content-length
+            value: "35"
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1296
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:51.026Z
+      time: 171
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 171
+    - _id: a376faab1c8a1993bb48c745757f0a4a
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 318
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "318"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 479
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query CurrentSiteCodyLlmConfiguration {
+                  site {
+                      codyLLMConfiguration {
+                          chatModel
+                          chatModelMaxTokens
+                          fastChatModel
+                          fastChatModelMaxTokens
+                          completionModel
+                          completionModelMaxTokens
+                      }
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: CurrentSiteCodyLlmConfiguration
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CurrentSiteCodyLlmConfiguration
+      response:
+        bodySize: 248
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 248
+          text: "[\"H4sIAAAAAAAAA4TOTQ6CMBAF4LvMmmqDEA1btrLzAmM7QAN2SH+MhvTuBjYSNXH1ksmbL\
+            28GjQGhmsGbQEsq1s/zuanZtqaLDoNhu957DA1rGqECz9Ep6hxO/V6NGDWJw64Unq2l\
+            ANm72+DjwgNZD1VRSikzaNGH+g8lejRDhI/yxjqulOLbNNKy7xemiSZPNAjFmpy452I\
+            0gcQVPcHX78bOZXFKKaUXAAAA//8DADDh/dAaAQAA\"]"
+          textDecoded:
+            data:
+              site:
+                codyLLMConfiguration:
+                  chatModel: sourcegraph/claude-3.5-sonnet
+                  chatModelMaxTokens: 45000
+                  completionModel: sourcegraph/deepseek-coder-v2-lite-base
+                  completionModelMaxTokens: 2048
+                  fastChatModel: sourcegraph/claude-3-haiku
+                  fastChatModelMaxTokens: 7000
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.556Z
+      time: 256
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 256
+    - _id: 0484c4d780805faf3dd3ddabae814640
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 165
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "165"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 479
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query CurrentSiteCodyLlmConfiguration {
+                  site {
+                      codyLLMConfiguration {
+                          smartContextWindow
+                      }
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: CurrentSiteCodyLlmConfiguration
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CurrentSiteCodyLlmConfiguration
+      response:
+        bodySize: 146
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 146
+          text: "[\"H4sIAAAAAAAAA6pWSkksSVSyqlY=\",\"Ks4sSQXRyfkplT4+vs75eWmZ6aVFiSWZ+Xlg\
+            +dzEohLn/LyS1IqS8My8lPxyJSullMzixKSc1BSl2traWgAAAAD//w==\",\"AwArMN\
+            n0TAAAAA==\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.610Z
+      time: 253
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 253
+    - _id: e141c56e63809042300db9bf8551d492
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 150
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "150"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 474
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query CurrentSiteCodyLlmProvider {
+                  site {
+                      codyLLMConfiguration {
+                          provider
+                      }
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: CurrentSiteCodyLlmProvider
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CurrentSiteCodyLlmProvider
+      response:
+        bodySize: 131
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 131
+          text: "[\"H4sIAAAAAAAAA6pWSkksSVSyqlY=\",\"Ks4sSQXRyfkplT4+vs75eWmZ6aVFiSWZ+Xkg\
+            8YKi/LLMlNQiJSul4vzSouTU9KLEggyl2traWgAAAAD//wMAHxQFwEUAAAA=\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.588Z
+      time: 264
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 264
+    - _id: 5b9030a4e18d1e000c71d6000a7cef6f
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 341
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "341"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 386
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query CurrentUser {
+                  currentUser {
+                      id
+                      hasVerifiedEmail
+                      displayName
+                      username
+                      avatarURL
+                      primaryEmail {
+                          email
+                      }
+                      organizations {
+                          nodes {
+                              id
+                              name
+                          }
+                      }
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: CurrentUser
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CurrentUser
+      response:
+        bodySize: 376
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 376
+          text: "[\"H4sIAAAAAAAAA2RPy07CQBT9l7tuaQ1R2klIFAQXaOMjNBjj4nZ6aaePmToPFJr+O2kwc\
+            eHunJzHvaeHHC0C64E7rUnarSE9UpEDg3SXNLxSp+T+5eqp4nPwoESTkhZ7QfmqRdEA\
+            s9qRB7kwXYPHBFsCBm/KaU6Fxq5cKOvHYRiCB86QlheD+TNkysa1v5ffrQMP8IAW9fb\
+            1ERiU1naGBUFTTieFUkVDYwNX0pK0E67aAIO7ZREpvlnjV/ZOblFn1XW+Xp1+omyXRj\
+            gTU5Nmm2XynM4eQnc81HMT3/gcPOi0aFEff0f0QBfw77PbYhTGazB4oHSBUpzQCiXNG\
+            JMqJwPs43MYhuEMAAD//wMASoyTP04BAAA=\"]"
+          textDecoded:
+            data:
+              currentUser:
+                avatarURL: https://lh3.googleusercontent.com/a/ACg8ocKFaqbYeuBkbj5dFEzx8bXV8a7i3sVbKCNPV7G0uyvk=s96-c
+                displayName: SourcegraphBot-9000
+                hasVerifiedEmail: true
+                id: VXNlcjozNDQ1Mjc=
+                organizations:
+                  nodes: []
+                primaryEmail:
+                  email: sourcegraphbot9k@gmail.com
+                username: sourcegraphbot9k-fnwmu
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.110Z
+      time: 220
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 220
+    - _id: aef0c9fe7483280d9c05ac8e97e37571
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 268
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "268"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 475
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query CurrentUserCodySubscription {
+                  currentUser {
+                      codySubscription {
+                          status
+                          plan
+                          applyProRateLimits
+                          currentPeriodStartAt
+                          currentPeriodEndAt
+                      }
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: CurrentUserCodySubscription
+            value: null
+        url: https://sourcegraph.com/.api/graphql?CurrentUserCodySubscription
+      response:
+        bodySize: 235
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 235
+          text: "[\"H4sIAAAAAAAAAwAAAP//\",\"XMyxCsIwFIXhdzlzhSbqkq1IB0GwtNXBLTYZAjUJNzdD\
+            KXl3URDU8fx8nBVGs4ZaMWUi6/mSLL1nMMuQ72kiF9kF/2qJNecEheYwHq8tKsRZeyh\
+            0/RkVdIzz0lHoNduTezhOUEzZVp/vzpILZmBN3DAUZC33m1psxG6UUgmhtvKGP91682\
+            Xlry2llCcAAAD//wMAXnz70MIAAAA=\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.658Z
+      time: 298
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 298
+    - _id: 4504fab53d7cb602861f73dc2aa883d2
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 101
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "101"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 466
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |-
+              
+              query SiteProductVersion {
+                  site {
+                      productVersion
+                  }
+              }
+            variables: {}
+        queryString:
+          - name: SiteProductVersion
+            value: null
+        url: https://sourcegraph.com/.api/graphql?SiteProductVersion
+      response:
+        bodySize: 139
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 139
+          text: "[\"H4sIAAAAAAAAA6pWSkksSVSyqlY=\",\"Ks4sSQXRBUX5KaXJJWGpRcWZ+XlKVkrGhkYG\
+            JgbxRgZGproGRrqGJvFmega6xsnJySYplmYmaaZpSrW1tQAAAAD//wMAV+DsdUkAAAA=\
+            \"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:50 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.635Z
+      time: 179
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 179
+    - _id: fd0fee4687419870bc82cba9d1023319
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 92
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: content-type
+            value: application/json; charset=utf-8
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: content-length
+            value: "92"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 461
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json; charset=utf-8
+          params: []
+          textJSON:
+            query: |
+              
+              query ViewerSettings {
+                viewerSettings {
+                  final
+                }
+              }
+            variables: {}
+        queryString:
+          - name: ViewerSettings
+            value: null
+        url: https://sourcegraph.com/.api/graphql?ViewerSettings
+      response:
+        bodySize: 283
+        content:
+          encoding: base64
+          mimeType: application/json
+          size: 283
+          text: "[\"H4sIAAAAAAAAA4zPwUoDQRAE0H8=\",\"6XO+YG8qBgMK4pLbXDpJOdvQ9iw9vdnEZf5d\
+            FgLBg+C16lFQC504mLqFzoIZ3iNCLNc1+RRjpY6WRLiMcPmCBesWHJOjJurWxvigeOX\
+            v66OWQ3+14MuL5EElD+tSoi58wiaRYe7Bfhw+UCeNrWjA6zsb9E9U97t7N3rhY8gZv8\
+            RDzo7MIcXq3dZ/kKHMb5OGqNht8qlYLYqbaZtEZYTt7PkkUXw93Bq11n4AAAD//wMAx\
+            z9zZjYBAAA=\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:51 GMT
+          - name: content-type
+            value: application/json
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+          - name: content-encoding
+            value: gzip
+        headersSize: 1328
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:50.994Z
+      time: 222
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 222
+    - _id: fbb23499ae0eec5c2e188687b429531b
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 0
+        cookies: []
+        headers:
+          - _fromType: array
+            name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - _fromType: array
+            name: user-agent
+            value: jetbrains/6.0-localbuild (Node.js v20.12.2)
+          - _fromType: array
+            name: x-requested-with
+            value: jetbrains 6.0-localbuild
+          - _fromType: array
+            name: accept
+            value: "*/*"
+          - _fromType: array
+            name: accept-encoding
+            value: gzip,deflate
+          - name: host
+            value: sourcegraph.com
+        headersSize: 331
+        httpVersion: HTTP/1.1
+        method: GET
+        queryString: []
+        url: https://sourcegraph.com/.api/modelconfig/supported-models.json
+      response:
+        bodySize: 2099
+        content:
+          encoding: base64
+          mimeType: text/plain; charset=utf-8
+          size: 2099
+          text: "[\"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\
+            Te+4js3Y=\",\"u/1Nkb1sHlg+ytFCMYQ0i2uYXYkdvXgL25X0iT0kzQURQFLOKJs1m\
+            TrPZMDUikbPfJbgogUe6zYyVQXb3HmoeIsFRt4T9uafHH3n9fi2efHJZWvPbyQzMTGq\
+            NZ2vOmX1+a232JmueUMQdqRnbjFPOmqLwdHQN6ZwNPQNOdxrtTPj7GdFosX+4gPb6vJ\
+            P63fxrZYg365fyfcYaXEnn/b+ksGUpPLGrH3ltTyDgIdwU4zcrF4JabEH61Vxjj9f/R\
+            cAAP//nl/hCHZSAAA=\"]"
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 14 Feb 2025 18:08:51 GMT
+          - name: content-type
+            value: text/plain; charset=utf-8
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: close
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache, max-age=0
+          - name: content-encoding
+            value: gzip
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1337
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2025-02-14T18:08:51.230Z
+      time: 202
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 202
+  pages: []
+  version: "1.2"

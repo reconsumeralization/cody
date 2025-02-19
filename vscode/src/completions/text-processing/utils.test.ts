@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { getNextNonEmptyLine, getPrevNonEmptyLine, lines } from './utils'
+import {
+    getFirstLine,
+    getLastLine,
+    getNextNonEmptyLine,
+    getPrevNonEmptyLine,
+    lines,
+    removeIndentation,
+} from './utils'
 
 describe('getNextNonEmptyLine', () => {
     it.each(
@@ -48,6 +55,40 @@ describe('lines', () => {
     })
 })
 
+describe('getFirstLine', () => {
+    it.each(
+        withCRLFExamples([
+            ['foo\nbar', 'foo'],
+            ['foo\nbar\nbaz', 'foo'],
+            ['foo\n\nbar', 'foo'],
+            ['foo\n  \nbar', 'foo'],
+            ['bar', 'bar'],
+            ['bar\n', 'bar'],
+            ['\nbar', ''],
+            ['', ''],
+        ])
+    )('should work for %j', (text, expected) => {
+        expect(getFirstLine(text)).toEqual(expected)
+    })
+})
+
+describe('getLastLine', () => {
+    it.each(
+        withCRLFExamples([
+            ['foo\nbar', 'bar'],
+            ['foo\nbar\nbaz', 'baz'],
+            ['foo\n\nbar', 'bar'],
+            ['foo\n  \nbar', 'bar'],
+            ['bar', 'bar'],
+            ['bar\n', ''],
+            ['\nbar', 'bar'],
+            ['', ''],
+        ])
+    )('should work for %j', (text, expected) => {
+        expect(getLastLine(text)).toEqual(expected)
+    })
+})
+
 function withCRLFExamples(examples: string[][]): string[][] {
     const crlfExample = []
     for (const example of examples) {
@@ -55,3 +96,17 @@ function withCRLFExamples(examples: string[][]): string[][] {
     }
     return examples.concat(crlfExample)
 }
+
+describe('removeIndentation', () => {
+    it.each([
+        ['  foo', 'foo'],
+        ['    bar', 'bar'],
+        ['\tfoo', 'foo'],
+        ['foo', 'foo'],
+        ['\tfoo\n  bar', 'foo\nbar'],
+        ['\tfoo\r\n  bar', 'foo\r\nbar'],
+        ['', ''],
+    ])('should work for %j', (text, expected) => {
+        expect(removeIndentation(text)).toEqual(expected)
+    })
+})

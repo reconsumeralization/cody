@@ -1,3 +1,3 @@
 // @ts-check
 
-export default ['agent', 'lib/shared', 'vscode', 'web', 'e2e']
+export default ['agent', 'cli', 'lib/shared', 'lib/prompt-editor', 'vscode', 'web']

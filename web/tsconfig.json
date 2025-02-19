@@ -1,12 +1,16 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
+    "module": "commonjs",
     "outDir": "dist",
+    "target": "es2019",
     "jsx": "react-jsx",
+    "allowJs": true,
+    "emitDeclarationOnly": true,
     "lib": ["ESNext", "DOM"],
   },
-  "include": ["src", "vite.config.ts"],
-  "exclude": ["dist"],
-  "references": [{ "path": "../lib/shared" }, { "path": "../lib/ui" }],
+  "include": ["lib", "demo", "globals.d.ts"],
+  "exclude": ["dist", "./vitest.config.mts"],
+  "references": [{"path": "../agent"}, { "path": "../lib/shared" }, {"path": "../vscode"}],
 }

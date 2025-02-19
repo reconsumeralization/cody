@@ -1,9 +1,48 @@
-import { downloadAndUnzipVSCode } from '@vscode/test-electron'
+import { spawn } from 'node:child_process'
 
-export const vscodeVersion = '1.81.1'
+import { SilentReporter, downloadAndUnzipVSCode } from '@vscode/test-electron'
 
-export function installDeps(): Promise<string> {
-    return downloadAndUnzipVSCode(vscodeVersion)
+// The VS Code version to use for e2e tests (there is also a version in ../integration/main.ts used for integration tests).
+//
+// We set this to stable so that tests are always running on the version of VS Code users are likely to be using. This may
+// result in tests breaking after a VS Code release but it's better for them to be investigated than potential bugs being
+// missed because we're running on an older version than users.
+const vscodeVersion = 'stable'
+
+export async function installVsCode(): Promise<string> {
+    return downloadAndUnzipVSCode(vscodeVersion, undefined, new SilentReporter())
+}
+
+function installChromium(): Promise<void> {
+    const proc = spawn('pnpm', ['exec', 'playwright', 'install', 'chromium'], {
+        shell: true,
+    })
+    return new Promise<void>((resolve, reject) => {
+        proc.on('error', e => console.error(e))
+        proc.stderr.on('data', e => {
+            const message = e.toString()
+            if (message) {
+                console.error(message)
+            }
+        })
+        proc.stdout.on('data', e => {
+            const message = e.toString()
+            if (message) {
+                console.log(message)
+            }
+        })
+        proc.on('close', code => {
+            if (code) {
+                reject(new Error(`Process failed: ${code}}`))
+            } else {
+                resolve()
+            }
+        })
+    })
+}
+
+function installAllDeps(): Promise<unknown> {
+    return Promise.all([installVsCode(), installChromium()])
 }
 
 if (require.main === module) {
@@ -15,7 +54,7 @@ if (require.main === module) {
         5 * 60 * 1000 // 5 minutes
     )
     void (async () => {
-        await installDeps()
+        await installAllDeps()
         clearTimeout(timeout)
     })()
 }

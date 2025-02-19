@@ -1,83 +1,83 @@
 import type { init as browserInit } from '@sentry/browser'
 import type { init as nodeInit } from '@sentry/node'
 
-import { Configuration } from '@sourcegraph/cody-shared/src/configuration'
-import { isDotCom } from '@sourcegraph/cody-shared/src/sourcegraph-api/environments'
 import {
+    NetworkError,
+    type Unsubscribable,
     isAbortError,
     isAuthError,
+    isDotCom,
+    isError,
     isRateLimitError,
-    NetworkError,
-} from '@sourcegraph/cody-shared/src/sourcegraph-api/errors'
-
-import { extensionDetails } from '../telemetry'
+    resolvedConfig,
+} from '@sourcegraph/cody-shared'
+import { version } from '../../version'
 
 export * from '@sentry/core'
-export const SENTRY_DSN = 'https://f565373301c9c7ef18448a1c60dfde8d@o19358.ingest.sentry.io/4505743319564288'
+const SENTRY_DSN = 'https://f565373301c9c7ef18448a1c60dfde8d@o19358.ingest.sentry.io/4505743319564288'
 
 export type SentryOptions = NonNullable<Parameters<typeof nodeInit | typeof browserInit>[0]>
 
 export abstract class SentryService {
-    constructor(protected config: Pick<Configuration, 'serverEndpoint' | 'isRunningInsideAgent'>) {
-        this.prepareReconfigure()
-    }
+    private configSubscription: Unsubscribable
 
-    public onConfigurationChange(newConfig: Pick<Configuration, 'serverEndpoint'>): void {
-        this.config = newConfig
-        this.prepareReconfigure()
-    }
+    constructor() {
+        this.configSubscription = resolvedConfig.subscribe(({ configuration, auth }) => {
+            try {
+                const isProd = process.env.NODE_ENV === 'production'
 
-    private prepareReconfigure(): void {
-        try {
-            const isProd = process.env.NODE_ENV === 'production'
-            // Used to enable Sentry reporting in the development environment.
-            const isSentryEnabled = process.env.ENABLE_SENTRY === 'true'
+                // Used to enable Sentry reporting in the development environment.
+                const isSentryEnabled = process.env.ENABLE_SENTRY === 'true'
+                if (!isProd && !isSentryEnabled) {
+                    return
+                }
 
-            const options: SentryOptions = {
-                dsn: SENTRY_DSN,
-                release: extensionDetails.version,
-                environment: this.config.isRunningInsideAgent
-                    ? 'agent'
-                    : typeof process === 'undefined'
-                    ? 'vscode-web'
-                    : 'vscode-node',
+                const options: SentryOptions = {
+                    dsn: SENTRY_DSN,
+                    release: version,
+                    sampleRate: 0.05, // 5% of errors are sent to Sentry
+                    environment: configuration.isRunningInsideAgent
+                        ? 'agent'
+                        : typeof process === 'undefined'
+                          ? 'vscode-web'
+                          : 'vscode-node',
 
-                // In dev mode, have Sentry log extended debug information to the console.
-                debug: !isProd,
+                    // In dev mode, have Sentry log extended debug information to the console.
+                    debug: !isProd,
 
-                // Only send errors when connected to dotcom in the production build.
-                beforeSend: (event, hint) => {
-                    if (
-                        (isProd || isSentryEnabled) &&
-                        isDotCom(this.config.serverEndpoint) &&
-                        shouldErrorBeReported(hint.originalException)
-                    ) {
-                        return event
-                    }
+                    // Only send errors when connected to dotcom in the production build.
+                    beforeSend: (event, hint) => {
+                        if (
+                            isProd &&
+                            isDotCom(auth.serverEndpoint) &&
+                            shouldErrorBeReported(
+                                hint.originalException,
+                                !!configuration.isRunningInsideAgent
+                            )
+                        ) {
+                            return event
+                        }
 
-                    return null
-                },
+                        return null
+                    },
+                }
 
-                // The extension host is shared across other extensions, so listening on the default
-                // unhandled error listeners would not be helpful in case other extensions or VS Code
-                // throw. Instead, use the manual `captureException` API.
-                //
-                // When running inside Agent, we control the whole Node environment so we can safely
-                // listen to unhandled errors/rejections.
-                ...(this.config.isRunningInsideAgent ? {} : { defaultIntegrations: false }),
+                this.reconfigure(options)
+            } catch (error) {
+                // We don't want to crash the extension host or VS Code if Sentry fails to load.
+                console.error('Failed to initialize Sentry', error)
             }
-
-            this.reconfigure(options)
-        } catch (error) {
-            // We don't want to crash the extension host or VS Code if Sentry fails to load.
-            console.error('Failed to initialize Sentry', error)
-        }
+        })
     }
 
     protected abstract reconfigure(options: Parameters<typeof nodeInit | typeof browserInit>[0]): void
+
+    public dispose(): void {
+        this.configSubscription.unsubscribe()
+    }
 }
 
-export function shouldErrorBeReported(error: unknown): boolean {
+export function shouldErrorBeReported(error: unknown, insideAgent: boolean): boolean {
     if (error instanceof NetworkError) {
         // Ignore Server error responses (5xx).
         return error.status < 500
@@ -87,5 +87,15 @@ export function shouldErrorBeReported(error: unknown): boolean {
         return false
     }
 
+    // Silencing our #1 reported error
+    if (isError(error) && error.message?.includes("Unexpected token '<'")) {
+        return false
+    }
+
+    // TODO(valery): verify if the stack-substring condition is still applicable.
+    // Condition we used: `!error.stack?.includes('sourcegraph.cody-ai')`
+    // Reason: currently, we don't have _any_ errors in Sentry which is suspicious.
+    // Original PR that introduced the condition: https://github.com/sourcegraph/cody/pull/3540
+    // Follow-up issue: https://linear.app/sourcegraph/issue/CODY-4673/telemetry-verify-error-filtering-conditions-after-the-change
     return true
 }

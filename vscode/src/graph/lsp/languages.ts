@@ -1,4 +1,4 @@
-import * as vscode from 'vscode'
+import type * as vscode from 'vscode'
 
 const goKeywords = new Set([
     'break',
@@ -136,8 +136,6 @@ const pythonKeywords = new Set([
 ])
 
 export const commonKeywords = new Set([...goKeywords, ...typescriptKeywords, ...pythonKeywords])
-
-export const identifierPattern = /[$A-Z_a-z][\w$]*/g
 
 const commonImportPaths = new Set([
     // The TS lib folder contains the TS standard library and all of ECMAScript.

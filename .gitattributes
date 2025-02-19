@@ -1,3 +1,6 @@
 # Ensure everything is checked out using \n even on Windows, because some test
 # code and snapshots assume this.
 * text=auto eol=lf
+CHANGELOG.md merge=union
+agent/recordings/*/recording.har.yaml merge=ours linguist-generated=true
+vscode/.schema-cache/*.json merge=ours linguist-generated=true

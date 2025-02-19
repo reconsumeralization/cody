@@ -1,0 +1,23 @@
+name: "Issue Labeler"
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: github/issue-labeler@v3.4
+        with:
+          configuration-path: .github/labeler.yml
+          enable-versioned-regex: 0
+          repo-token: ${{ github.token }}
+          include-title: 1

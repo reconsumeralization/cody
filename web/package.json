@@ -1,7 +1,6 @@
 {
-  "private": true,
   "name": "@sourcegraph/cody-web",
-  "version": "0.0.1",
+  "version": "0.31.0",
   "description": "Cody standalone web app",
   "license": "Apache-2.0",
   "repository": {
@@ -9,21 +8,41 @@
     "url": "https://github.com/sourcegraph/cody",
     "directory": "web"
   },
-  "main": "src/index.ts",
-  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/lib/index.d.ts",
+  "sideEffects": true,
+  "files": ["dist/*"],
   "scripts": {
     "dev": "vite --mode development",
-    "build": "tsc --build && vite build --mode production",
-    "lint": "pnpm run lint:js",
-    "lint:js": "eslint --cache '**/*.[tj]s?(x)'",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@sourcegraph/cody-shared": "workspace:*",
-    "@sourcegraph/cody-ui": "workspace:*",
-    "lodash": "^4.17.21"
+    "dev:standalone": "CODY_WEB_DEMO_STANDALONE_MODE=true vite --mode development",
+    "build": "vite build --mode production && tsc --build",
+    "test": "vitest",
+    "build-ts": "tsc --build"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.195"
+    "@openctx/vscode-lib": "^0.0.26",
+    "@sourcegraph/cody": "workspace:*",
+    "@sourcegraph/cody-shared": "workspace:*",
+    "@sourcegraph/prompt-editor": "workspace:*",
+    "@types/lodash": "4.14.195",
+    "@types/vscode": "^1.92.0",
+    "@vitejs/plugin-react-swc": "^3.6.0",
+    "@vscode/codicons": "^0.0.35",
+    "buffer": "^6.0.3",
+    "classnames": "^2.5.1",
+    "cody-ai": "workspace:*",
+    "events": "^3.3.0",
+    "idb": "^8.0.0",
+    "lodash": "4.17.21",
+    "path-browserify": "^1.0.1",
+    "postcss": "^8.4.38",
+    "postcss-mixins": "^10.0.1",
+    "postcss-nested": "^6.0.1",
+    "stream-browserify": "^3.0.0",
+    "tailwindcss": "^3.4.3",
+    "util": "^0.12.5",
+    "vite-bundle-analyzer": "^0.10.5",
+    "vite-plugin-svgr": "^4.2.0",
+    "vscode-uri": "^3.0.8"
   }
 }

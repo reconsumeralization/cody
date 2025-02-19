@@ -1,42 +1,94 @@
+import { logDebug } from '@sourcegraph/cody-shared'
 import * as vscode from 'vscode'
+import type { AgentTextDocument } from './AgentTextDocument'
+import type { EditFunction } from './AgentWorkspaceDocuments'
 
-import { AgentTextDocument } from './AgentTextDocument'
-
-export function newTextEditor(document: AgentTextDocument): vscode.TextEditor {
-    const selection: vscode.Selection = document.textDocument.selection
-        ? new vscode.Selection(
-              new vscode.Position(
-                  document.textDocument.selection.start.line,
-                  document.textDocument.selection.start.character
-              ),
-              new vscode.Position(
-                  document.textDocument.selection.end.line,
-                  document.textDocument.selection.end.character
+export class AgentTextEditor implements vscode.TextEditor {
+    constructor(
+        private readonly agentDocument: AgentTextDocument,
+        private readonly params?: { edit?: EditFunction }
+    ) {}
+    get document(): AgentTextDocument {
+        return this.agentDocument
+    }
+    get selection(): vscode.Selection {
+        const protocolSelection = this.agentDocument.protocolDocument.selection
+        const selection: vscode.Selection = protocolSelection
+            ? new vscode.Selection(
+                  new vscode.Position(protocolSelection.start.line, protocolSelection.start.character),
+                  new vscode.Position(protocolSelection.end.line, protocolSelection.end.character)
               )
-          )
-        : new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0))
+            : // Default to putting the cursor at the start of the file.
+              new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0))
+        return selection
+    }
+    set selection(newSelection: vscode.Selection) {}
 
-    return {
-        // Looking at the implementation of the extension, we only need
-        // to provide `document` but we do a best effort to shim the
-        // rest of the `TextEditor` properties.
-        document,
-        selection,
-        selections: [selection],
-        edit: () => Promise.resolve(true),
-        insertSnippet: () => Promise.resolve(true),
-        revealRange: () => {},
-        options: {
+    get selections(): readonly vscode.Selection[] {
+        return [this.selection]
+    }
+    get visibleRanges(): readonly vscode.Range[] {
+        const protocolVisibleRange = this.agentDocument.protocolDocument.visibleRange
+        const visibleRange = protocolVisibleRange
+            ? new vscode.Selection(
+                  new vscode.Position(
+                      protocolVisibleRange.start.line,
+                      protocolVisibleRange.start.character
+                  ),
+                  new vscode.Position(protocolVisibleRange.end.line, protocolVisibleRange.end.character)
+              )
+            : this.selection
+        return [visibleRange]
+    }
+    get options(): vscode.TextEditorOptions {
+        return {
             cursorStyle: undefined,
             insertSpaces: undefined,
             lineNumbers: undefined,
             // TODO: fix tabSize
             tabSize: 2,
-        },
-        setDecorations: () => {},
-        viewColumn: vscode.ViewColumn.Active,
-        visibleRanges: [selection],
-        show: () => {},
-        hide: () => {},
+        }
+    }
+    viewColumn = vscode.ViewColumn.Active
+
+    // IMPORTANT(olafurpg): `edit` must be defined as a fat arrow. The tests
+    // fail if it's defined as a normal class method.
+    edit = (
+        callback: (editBuilder: vscode.TextEditorEdit) => void,
+        options?: { readonly undoStopBefore: boolean; readonly undoStopAfter: boolean } | undefined
+    ): Promise<boolean> => {
+        if (this.params?.edit) {
+            return this.params.edit(this.agentDocument.uri, callback, options)
+        }
+        logDebug('AgentTextEditor:edit()', 'not supported')
+        return Promise.resolve(false)
+    }
+    insertSnippet(
+        snippet: vscode.SnippetString,
+        location?:
+            | vscode.Range
+            | vscode.Position
+            | readonly vscode.Range[]
+            | readonly vscode.Position[]
+            | undefined,
+        options?: { readonly undoStopBefore: boolean; readonly undoStopAfter: boolean } | undefined
+    ): Thenable<boolean> {
+        // Do nothing, for now.
+        return Promise.resolve(true)
+    }
+    setDecorations(
+        decorationType: vscode.TextEditorDecorationType,
+        rangesOrOptions: readonly vscode.Range[] | readonly vscode.DecorationOptions[]
+    ): void {
+        // Do nothing, for now
+    }
+    revealRange(range: vscode.Range, revealType?: vscode.TextEditorRevealType | undefined): void {
+        // Do nothing, for now.
+    }
+    show(column?: vscode.ViewColumn | undefined): void {
+        // Do nothing, for now.
+    }
+    hide(): void {
+        // Do nothing, for now.
     }
 }

@@ -1,10 +1,7 @@
 ## Chat
 
-<video autoPlay muted loop playsInline>
-    <source
-        type="video/mp4"
-        src="https://storage.googleapis.com/sourcegraph-assets/website/Product%20Animations/cody-chat-may2023.mp4"
-    />
-</video>
+<img src="https://storage.googleapis.com/sourcegraph-assets/blog/blog-vscode-v018-release/blog-v018-context-controls-002.gif">
 
-Answer questions about both general programming topics and your specific codebase from right inside your editor. Cody knows about your local code and can learn from the code graph and documentation inside your organization to do just that.
+Answer questions about general programming topics, or specific to your codebase, with Cody chat. You can choose your preferred model and @-mention repositories, files, and symbols.
+
+You can start a chat at any time using the default keyboard shortcut of `Option` `L` on macOS and `Alt` `L` on Windows & Linux.

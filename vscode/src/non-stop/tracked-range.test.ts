@@ -1,9 +1,14 @@
-import assert from 'assert'
+import assert from 'node:assert'
 
 import { describe, expect, it } from 'vitest'
 import { Position, Range } from 'vscode'
 
-import { updateRange, updateRangeMultipleChanges } from './tracked-range'
+import {
+    type UpdateRangeOptions,
+    updateFixedRange,
+    updateRange,
+    updateRangeMultipleChanges,
+} from './tracked-range'
 
 // Creates a position.
 function pos(line: number, character: number): Position {
@@ -21,13 +26,17 @@ function show(text: string, range: Range): string {
     const buffer = []
     let line = 0
     let beginningOfLine = 0
+    let outputRangeBegin = false
+    let outputRangeEnd = false
     for (let i = 0; i <= text.length; i++) {
         const position = new Position(line, i - beginningOfLine)
         if (position.isEqual(range.start)) {
             buffer.push('[')
+            outputRangeBegin = true
         }
         if (position.isEqual(range.end)) {
             buffer.push(']')
+            outputRangeEnd = true
         }
         if (i < text.length) {
             const ch = text[i]
@@ -37,6 +46,12 @@ function show(text: string, range: Range): string {
                 beginningOfLine = i + 1
             }
         }
+    }
+    if (!(outputRangeBegin && outputRangeEnd)) {
+        // We did not represent the range, so dump a message indicating what it was.
+        buffer.push(
+            ` Range=${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`
+        )
     }
     return buffer.join('')
 }
@@ -59,10 +74,10 @@ function show(text: string, range: Range): string {
 // whether inserting at () extends the tracked range or not.
 function parse(spec: string): { tracked: Range; edited: Range; text: string } {
     const buffer = []
-    let trackedStart
-    let trackedEnd
-    let editedStart
-    let editedEnd
+    let trackedStart: Position | undefined
+    let trackedEnd: Position | undefined
+    let editedStart: Position | undefined
+    let editedEnd: Position | undefined
     let line = 0
     let beginningOfLine = 0
     let i = 0
@@ -87,6 +102,7 @@ function parse(spec: string): { tracked: Range; edited: Range; text: string } {
                 assert(!editedEnd, 'multiple ending )s')
                 editedEnd = here
                 break
+            // biome-ignore lint/suspicious/noFallthroughSwitchClause: intentional
             case '\n':
                 line++
                 beginningOfLine = i + 1
@@ -97,7 +113,10 @@ function parse(spec: string): { tracked: Range; edited: Range; text: string } {
         }
     }
 
-    assert(trackedStart && trackedEnd && editedStart && editedEnd, 'ranges should be specified with [], ()')
+    assert(
+        trackedStart && trackedEnd && editedStart && editedEnd,
+        'ranges should be specified with [], ()'
+    )
 
     return {
         tracked: rng(trackedStart, trackedEnd),
@@ -131,10 +150,14 @@ function edit(text: string, range: Range, replacement: string): string {
 // Given a spec with a tracked range in [], an edited range in (),
 // replaces () with the specified text; applies range tracking;
 // and serializes the resulting text and tracked range.
-function track(spec: string, replacement: string): string {
+function track(spec: string, replacement: string, options?: UpdateRangeOptions): string {
     const scenario = parse(spec)
     const editedText = edit(scenario.text, scenario.edited, replacement)
-    const updatedRange = updateRange(scenario.tracked, { range: scenario.edited, text: replacement })
+    const updatedRange = updateRange(
+        scenario.tracked,
+        { range: scenario.edited, text: replacement },
+        options
+    )
     return updatedRange ? show(editedText, updatedRange) : editedText
 }
 
@@ -176,6 +199,9 @@ describe('Tracked Range', () => {
     it('should track intra-line deletion overlapping the start of the range by truncating the start of the range', () => {
         expect(track('"(hello[, )world]"', '')).toBe('"[world]"')
     })
+    it('should track intra-line new line insertion overlapping the start of the range', () => {
+        expect(track('(hello[, )world]', 'hello\n')).toBe('hello\n[world]')
+    })
     it('should track single character insertion before the range', () => {
         expect(track('()[ello]\nworld', 'h')).toBe('h[ello]\nworld')
     })
@@ -192,7 +218,9 @@ describe('Tracked Range', () => {
         expect(track('[hello(, ]world)!', ' everyone')).toBe('[hello] everyone!')
     })
     it('should the range to the start of the edit, if the edit encompasses the entire range', () => {
-        expect(track('all the (h[ello, ]world) things!', 'woozl wuzl')).toBe('all the []woozl wuzl things!')
+        expect(track('all the (h[ello, ]world) things!', 'woozl wuzl')).toBe(
+            'all the []woozl wuzl things!'
+        )
     })
     it('should track multiline insertions before the range, ending on the same line as the range', () => {
         expect(track('he(llo,\nworld) [is a common\ngreeting]', "y jude,\ndon't be afraid")).toBe(
@@ -200,7 +228,97 @@ describe('Tracked Range', () => {
         )
     })
     it('should track multiline insertions before the range, starting and ending on the same line as the range', () => {
-        expect(track('hello(,) [world]!', ' everybody\naround the')).toBe('hello everybody\naround the [world]!')
+        expect(track('hello(,) [world]!', ' everybody\naround the')).toBe(
+            'hello everybody\naround the [world]!'
+        )
+    })
+
+    describe('when supporting range affix', () => {
+        it('should track new line insertions before the range as a range expansion', () => {
+            expect(track(' [()]hello', '\n//\n', { supportRangeAffix: true })).toBe(' [\n//\n]hello')
+        })
+        it('should track single character insertion before the range as a range expansion', () => {
+            expect(track('( )[llo] world', 'he', { supportRangeAffix: true })).toBe('[hello] world')
+        })
+
+        it('should track single character insertion before the range as a range expansion', () => {
+            expect(track('()[ello] world', 'h', { supportRangeAffix: true })).toBe('[hello] world')
+        })
+
+        it('should track multiple character insertion after the range as a range expansion', () => {
+            expect(track('[he]( ) world', 'llo', { supportRangeAffix: true })).toBe('[hello] world')
+        })
+
+        it('should track single character insertion after the range as a range expansion', () => {
+            expect(track('[hell]() world', 'o', { supportRangeAffix: true })).toBe('[hello] world')
+        })
+
+        it('should not track whitespace insertion before the range as a range expansion', () => {
+            expect(track('( )[llo] world', '  \n', { supportRangeAffix: true })).toBe('  \n[llo] world')
+        })
+
+        it('should not track whitespace insertion after the range as a range expansion', () => {
+            expect(track('[hello]( )', '  \n', { supportRangeAffix: true })).toBe('[hello]  \n')
+        })
+
+        it('should track single character insertion within the range as a range expansion', () => {
+            expect(track('h[e()l]o', 'l', { supportRangeAffix: true })).toBe('h[ell]o')
+        })
+
+        it('should track single character deletion within the range as a range reduction', () => {
+            expect(track('h[e(l)l]o', '', { supportRangeAffix: true })).toBe('h[el]o')
+        })
+
+        it('should track single new line insertion within the range as a range expansion (first line)', () => {
+            expect(track('h[e()l\nll]o', '\n', { supportRangeAffix: true })).toBe('h[e\nl\nll]o')
+        })
+
+        it('should track single new line insertion within the range as a range expansion (interior)', () => {
+            expect(track('h[e\nee()ll\nl]o', '\n', { supportRangeAffix: true })).toBe('h[e\nee\nll\nl]o')
+        })
+
+        it('should track single new line insertion within the range as a range expansion (last line)', () => {
+            expect(track('h[e\nee()l]o', '\n', { supportRangeAffix: true })).toBe('h[e\nee\nl]o')
+        })
+
+        it('should track single new line insertion within the range as a range expansion (single line)', () => {
+            expect(track('h[e()l]o', '\n', { supportRangeAffix: true })).toBe('h[e\nl]o')
+        })
+
+        it('should track single new line insertion within the range as a range expansion (single line; support range affix off)', () => {
+            expect(track('h[e()l]o', '\n', { supportRangeAffix: false })).toBe('h[e\nl]o')
+        })
+
+        it('should track single new line deletion within the range as a range reduction', () => {
+            expect(track('h[e(\n)l]o', '', { supportRangeAffix: true })).toBe('h[el]o')
+        })
+    })
+})
+
+// Given a spec with a tracked range in [], an edited range in (),
+// replaces () with the specified text; applies range tracking;
+// and serializes the resulting text and tracked range.
+function trackFixed(spec: string, replacement: string): string {
+    const scenario = parse(spec)
+    const editedText = edit(scenario.text, scenario.edited, replacement)
+    const updatedRange = updateFixedRange(scenario.tracked, {
+        range: scenario.edited,
+        text: replacement,
+    })
+    return updatedRange ? show(editedText, updatedRange) : editedText
+}
+
+describe('Tracked Range Fixed', () => {
+    it('should preserve the fixed range for changes before the range', () => {
+        expect(trackFixed('()[hello world]', 'I am here, ')).toBe('[I am here, ]hello world')
+    })
+
+    it('should preserve the fixed range for changes after the range', () => {
+        expect(trackFixed('[hello world]( )', ', I am here')).toBe('[hello world], I am here')
+    })
+
+    it('should preserve the fixed range for changes within the range', () => {
+        expect(trackFixed('[hello ()orld]', 'w')).toBe('[hello worl]d')
     })
 })
 

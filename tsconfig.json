@@ -1,30 +1,35 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "@sourcegraph/tsconfig",
   "compilerOptions": {
-    "noEmit": true
+    "target": "ESNext",
+    "module": "commonjs",
+    "strict": true,
+    "lib": ["ESNext"],
+    "isolatedModules": false,
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "noErrorTruncation": true,
+    "resolveJsonModule": true,
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "."
   },
-  "files": [],
-  "include": [
-    ".eslintrc.js",
-    ".prettierrc.js",
-    "vitest.workspace.js",
-    "lib/shared/vitest.config.ts",
-    "cli/vitest.config.ts"
-  ],
-  "exclude": ["dist", "node_modules"],
+  "include": [".config/*.ts"],
+  "exclude": ["dist", "node_modules", "typehacks", ".test"],
+  "watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriority"
+  },
   "references": [
-    { "path": "e2e-inspector" },
-    { "path": "e2e" },
     { "path": "agent" },
-    { "path": "completions-review-tool" },
-    { "path": "cli" },
     { "path": "lib/shared" },
-    { "path": "lib/ui" },
-    { "path": "slack" },
+    { "path": "lib/prompt-editor" },
     { "path": "vscode" },
     { "path": "vscode/test/integration" },
-    { "path": "vscode/test/benchmark" },
-    { "path": "vscode/test/completions" },
     { "path": "vscode/scripts" },
     { "path": "web" }
   ]

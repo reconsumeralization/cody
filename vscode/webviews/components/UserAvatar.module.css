@@ -1,0 +1,29 @@
+.user-avatar {
+    isolation: isolate;
+    display: inline-flex;
+    border-radius: 50%;
+    background-color: var(--vscode-inputOption-activeBackground);
+    color: var(--vscode-inputOption-activeForeground);
+    align-items: center;
+    justify-content: center;
+}
+
+.sourcegraph-gradient-border {
+    --gradient-border-width: 1px;
+
+    border-radius: 50%;
+    padding: 1px;
+    background-clip: padding-box;
+    background-image: linear-gradient(
+        180deg,
+        #00cbec 0%,
+        #a112ff 50%,
+        #ff5543 100%
+    );
+
+    align-items: center;
+    justify-content: center;
+
+    width: fit-content;
+    height: fit-content;
+}

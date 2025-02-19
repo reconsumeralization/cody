@@ -1,22 +1,45 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import * as vscode from 'vscode'
 
-import { getFileNameAfterLastDash } from './utils'
+import { expandRangeToInsertedText, getMinimumDistanceToRangeBoundary } from './utils'
 
-// Test for getFileNameAfterLastDash
-describe('getFileNameAfterLastDash', () => {
-    test('gets the last part of the file path after the last slash', () => {
-        const filePath = '/path/to/file.txt'
-        const fileName = 'file.txt'
-        expect(getFileNameAfterLastDash(filePath)).toEqual(fileName)
+describe('getMinimumDistanceToRangeBoundary', () => {
+    it('returns start distance when position is before range', () => {
+        const position = new vscode.Position(5, 0)
+        const range = new vscode.Range(10, 0, 20, 0)
+        const minDistance = getMinimumDistanceToRangeBoundary(position, range)
+        expect(minDistance).toBe(5)
     })
-    test('get file name when there is no slash', () => {
-        const filePath = 'file.txt'
-        const fileName = 'file.txt'
-        expect(getFileNameAfterLastDash(filePath)).toEqual(fileName)
+
+    it('returns end distance when position is after range', () => {
+        const position = new vscode.Position(25, 0)
+        const range = new vscode.Range(10, 0, 20, 0)
+        const minDistance = getMinimumDistanceToRangeBoundary(position, range)
+        expect(minDistance).toBe(5)
     })
-    test('get file name when there is no extension', () => {
-        const filePath = 'file'
-        const fileName = 'file'
-        expect(getFileNameAfterLastDash(filePath)).toEqual(fileName)
+
+    it('returns smaller of start and end distances when position is in range', () => {
+        const position = new vscode.Position(18, 0)
+        const range = new vscode.Range(10, 0, 20, 0)
+        const minDistance = getMinimumDistanceToRangeBoundary(position, range)
+        expect(minDistance).toBe(2)
+    })
+})
+
+describe('expandRangeToInsertedText', () => {
+    it('should expand range with additional characters', () => {
+        const range = new vscode.Range(0, 0, 0, 0)
+        const insertedText = 'Hello, world'
+        const adjustedRange = expandRangeToInsertedText(range, insertedText)
+        const expectedRange = new vscode.Range(0, 0, 0, 12)
+        expect(adjustedRange.isEqual(expectedRange)).toBe(true)
+    })
+
+    it('should expand range with additional characters and new lines', () => {
+        const range = new vscode.Range(10, 0, 10, 0)
+        const insertedText = 'Hello, world\nWorld, Hello'
+        const adjustedRange = expandRangeToInsertedText(range, insertedText)
+        const expectedRange = new vscode.Range(10, 0, 11, 12)
+        expect(adjustedRange.isEqual(expectedRange)).toBe(true)
     })
 })

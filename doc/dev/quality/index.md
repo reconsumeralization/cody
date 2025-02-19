@@ -15,12 +15,6 @@ Cody autocompletion (code completions in your editor) can be powered by two type
 
 For chat-based models, we can influence the performance by altering the prompting AND context. For code-based models, we can typically influence the performance by adjusting the amount and relevancy of context only, as there is no prompting to adjust.
 
-### Autocomplete review tool
-
-The autocomplete review tool let's us (manually, visually) inspect autocomplete behavior in a bunch of different scenarios, with different LLM models, to see how we've affected its performance - or to see how its performs with a new LLM.
-
-[Autocomplete review tool](./autocomplete-review-tool)
-
 ## Chat
 
 ### Influencing chat performance
@@ -31,6 +25,66 @@ Relevant context from many different sources (the open file in your editor, tree
 
 We can influence chat performance by altering prompting AND context amount/relevancy.
 
-### LLM Judge
+## Testing a new LLM with Cody
 
-[LLM judge tool](../e2e/README.md)
+This guide demonstrates how to test LLM models from Google Gemini, Groq, or any OpenAI-compatible APIs using your API keys in Cody.
+
+This feature is intended solely for internal QA testing and development purposes and is concealed behind an unregistered configuration setting (`cody.dev.models`) that functions exclusively in [Dev/Debug mode](../../../vscode/CONTRIBUTING.md).
+
+### cody.dev.models
+
+- provider: string
+  - The name of the LLM provider. E.g., "google" for Google, "groq" for Groq, "openaicompatible" for an OpenAI-compatible API, etc.
+- model: string
+  - The ID of the model. E.g., "gemini-1.5-pro-latest"
+- tokens?: number
+  - The Context Window of the model. Default to 7k.
+- apiKey?: string
+  - The API Key for the API Endpoint if the endpoint required one.
+- apiEndpoint?: string
+  - The endpoint URL for the API that's different than the default URL.
+
+## Getting Started
+
+First, obtain an API key from the provider you wish to test Cody with:
+
+- Google Gemini: https://makersuite.google.com/app/apikey
+- Groq: https://console.groq.com/keys
+
+Configure the dev models to use in your VS Code user settings:
+
+```json
+{
+  "cody.dev.models": [
+    // Google Gemini 1.5 Pro
+    {
+      "provider": "google",
+      "model": "gemini-1.5-pro-latest",
+      "tokens": 1000000,
+      "apiKey": "$GEMINI_API_KEY"
+    },
+    // Groq llama2 70b
+    {
+      "provider": "groq",
+      "model": "llama2-70b-4096",
+      "tokens": 4096,
+      "apiKey": "$GROQ_API_KEY"
+    },
+    // OpenAI / OpenAI-compatible APIs
+    {
+      "provider": "groq", // keep groq as provider
+      "model": "$OPENAI_MODEL_NAME",
+      "apiKey": "$OPENAI_API_KEY",
+      "apiEndpoint": "$OPENAI_API_ENDPOINT"
+    },
+    // Ollama
+    {
+      "provider": "ollama",
+      "model": "$OLLAMA_MODEL_NAME",
+      "apiEndpoint": "$OLLAMA_API_ENDPOINT"
+    }
+  ]
+}
+```
+
+You should now find the new models available in your chat panel. (You may need to reload VS Code fro the changes to take effect.)

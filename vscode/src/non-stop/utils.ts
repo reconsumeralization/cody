@@ -1,63 +1,28 @@
-export enum CodyTaskState {
-    'idle' = 1,
-    'working' = 2,
-    'ready' = 3,
-    'applying' = 4,
-    'fixed' = 5,
-    'error' = 6,
-}
+import * as vscode from 'vscode'
 
-export type CodyTaskList = {
-    [key in CodyTaskState]: {
-        id: string
-        icon: string
-        description: string
-    }
+/**
+ * Calculates the minimum distance from the given position to the start or end of the provided range.
+ */
+export function getMinimumDistanceToRangeBoundary(
+    position: vscode.Position,
+    range: vscode.Range
+): number {
+    const startDistance = Math.abs(position.line - range.start.line)
+    const endDistance = Math.abs(position.line - range.end.line)
+    return Math.min(startDistance, endDistance)
 }
 
 /**
- * Icon for each task state
+ * Given some `insertedText`, adjusts the provided `range` to account for the
+ * additional lines and characters that were inserted.
  */
-export const fixupTaskList: CodyTaskList = {
-    [CodyTaskState.idle]: {
-        id: 'idle',
-        icon: 'clock',
-        description: 'Initial state',
-    },
-    [CodyTaskState.working]: {
-        id: 'working',
-        icon: 'sync~spin',
-        description: 'Cody is preparing a response',
-    },
-    [CodyTaskState.ready]: {
-        id: 'ready',
-        icon: 'pencil',
-        description: 'Cody has responsed with suggestions and is ready to apply them',
-    },
-    [CodyTaskState.applying]: {
-        id: 'applying',
-        icon: 'pencil',
-        description: 'The fixup is being applied to the document',
-    },
-    [CodyTaskState.fixed]: {
-        id: 'fixed',
-        icon: 'pass-filled',
-        description: 'Suggestions from Cody have been applied or discarded',
-    },
-    [CodyTaskState.error]: {
-        id: 'error',
-        icon: 'stop',
-        description: 'The task failed',
-    },
-}
-
-/**
- * Get the last part of the file path after the last slash
- */
-export function getFileNameAfterLastDash(filePath: string): string {
-    const lastDashIndex = filePath.lastIndexOf('/')
-    if (lastDashIndex === -1) {
-        return filePath
-    }
-    return filePath.slice(lastDashIndex + 1)
+export function expandRangeToInsertedText(range: vscode.Range, insertedText: string): vscode.Range {
+    const insertedLines = insertedText.split(/\r\n|\r|\n/m)
+    const lastLineLength = insertedLines.at(-1)?.length || 0
+    return new vscode.Range(
+        range.start,
+        insertedLines.length === 1
+            ? range.start.translate(0, lastLineLength)
+            : new vscode.Position(range.start.line + insertedLines.length - 1, lastLineLength)
+    )
 }

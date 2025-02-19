@@ -1,0 +1,706 @@
+log:
+  _recordingName: rewrite-query
+  creator:
+    comment: persister:fs
+    name: Polly.JS
+    version: 6.0.6
+  entries:
+    - _id: 5e7ec73da7091b2c30949b51300b7d0b
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 886
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: "You are helping the user search over a codebase. List some filename
+                  fragments that would match files relevant to read to answer
+                  the user's query. Present your results in a *single* XML list
+                  in the following format: <keywords><keyword><value>a single
+                  keyword</value><variants>a space separated list of synonyms
+                  and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>type Zoekt struct {</userQuery>"
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 3387
+        content:
+          mimeType: text/event-stream
+          size: 3387
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords>\n<keyword>\n<value>zoekt</value>\n<variants>search search_engine indexer</variants>\n<weight>1.0</weight>\n</keyword>\n<keyword>\n<value>struct</value>\n<variants>type class object</variants>\n<weight>0.8</weight>\n</keyword>\n</keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:36 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:35.893Z
+      time: 1129
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1129
+    - _id: b82ffc1fe42b5915aadcd289df2394cd
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 1047
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: >-
+                  You are helping the user search over a codebase. List some
+                  filename fragments that would match files relevant to read to
+                  answer the user's query. Present your results in a *single*
+                  XML list in the following format: <keywords><keyword><value>a
+                  single keyword</value><variants>a space separated list of
+                  synonyms and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>type Zoekt struct {
+                  	Client zoekt.Searcher
+
+                  	// DisableCache when true prevents caching of Client.List. Useful in
+                  	// tests.
+                  	DisableCache bool
+
+                  	mu       sync.RWMute
+                  </userQuery>
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 10815
+        content:
+          mimeType: text/event-stream
+          size: 10815
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords>\n<keyword>\n<value>zoekt</value>\n<variants>search search_engine indexer</variants>\n<weight>1.0</weight>\n</keyword>\n<keyword>\n<value>client</value>\n<variants>client connection api</variants>\n<weight>0.8</weight>\n</keyword>\n<keyword>\n<value>cache</value>\n<variants>cache caching</variants>\n<weight>0.9</weight>\n</keyword>\n<keyword>\n<value>sync</value>\n<variants>synchronization concurrency locking</variants>\n<weight>0.7</weight>\n</keyword>\n</keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:37 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:36.394Z
+      time: 1617
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1617
+    - _id: 6a4ae086f3434f9fe6c7056db021c4bb
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 914
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: "You are helping the user search over a codebase. List some filename
+                  fragments that would match files relevant to read to answer
+                  the user's query. Present your results in a *single* XML list
+                  in the following format: <keywords><keyword><value>a single
+                  keyword</value><variants>a space separated list of synonyms
+                  and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>C'est ou la logique pour recloner les
+                  dépôts?</userQuery>"
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 4841
+        content:
+          mimeType: text/event-stream
+          size: 4841
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords><keyword><value>clone</value><variants>reclone replication repository</variants><weight>0.8</weight></keyword><keyword><value>logic</value><variants>logic reasoning algorithm</variants><weight>0.7</weight></keyword><keyword><value>repository</value><variants>repo git</variants><weight>0.7</weight></keyword></keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:37 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:36.897Z
+      time: 1160
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1160
+    - _id: 9de80475ccb22960d22bf3c52776c1c0
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 920
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: "You are helping the user search over a codebase. List some filename
+                  fragments that would match files relevant to read to answer
+                  the user's query. Present your results in a *single* XML list
+                  in the following format: <keywords><keyword><value>a single
+                  keyword</value><variants>a space separated list of synonyms
+                  and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>Wie kann ich eine neue Datenbankmigration
+                  definieren?</userQuery>"
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 7647
+        content:
+          mimeType: text/event-stream
+          size: 7647
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords>\n<keyword>\n<value>database migration</value>\n<variants>db migration db-migration database-migration db_migration</variants>\n<weight>1.0</weight>\n</keyword>\n<keyword>\n<value>migration definition</value>\n<variants>define migration migration definition</variants>\n<weight>0.9</weight>\n</keyword>\n<keyword>\n<value>new migration</value>\n<variants>create migration new-migration</variants>\n<weight>0.8</weight>\n</keyword>\n</keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:38 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:37.399Z
+      time: 1851
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1851
+    - _id: 33b29f536ed2215e32082d71ec6e1e34
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 977
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: "You are helping the user search over a codebase. List some filename
+                  fragments that would match files relevant to read to answer
+                  the user's query. Present your results in a *single* XML list
+                  in the following format: <keywords><keyword><value>a single
+                  keyword</value><variants>a space separated list of synonyms
+                  and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>Explain how the context window limit is
+                  calculated. how much budget is given to @-mentions vs. search
+                  context?</userQuery>"
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 11054
+        content:
+          mimeType: text/event-stream
+          size: 11054
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords>\n<keyword>\n<value>context window</value>\n<variants>context window limit context-window context_window</variants>\n<weight>0.8</weight>\n</keyword>\n<keyword>\n<value>budget</value>\n<variants>budget allocation budget-allocation budget_allocation</variants>\n<weight>0.7</weight>\n</keyword>\n<keyword>\n<value>mentions</value>\n<variants>@-mentions mentions</variants>\n<weight>0.6</weight>\n</keyword>\n<keyword>\n<value>search context</value>\n<variants>search-context search_context</variants>\n<weight>0.7</weight>\n</keyword>\n</keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:38 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:37.899Z
+      time: 1702
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 1702
+    - _id: 7d22422290b9f062ef88f698a9926a08
+      _order: 0
+      cache: {}
+      request:
+        bodySize: 972
+        cookies: []
+        headers:
+          - name: accept-encoding
+            value: gzip;q=0
+          - name: authorization
+            value: token
+              REDACTED_fc324d3667e841181b0779375f26dedc911d26b303d23b29b1a2d7ee63dc77eb
+          - name: connection
+            value: keep-alive
+          - name: content-type
+            value: application/json
+          - name: user-agent
+            value: / (Node.js v20.4.0)
+          - name: x-requested-with
+            value: ""
+          - name: host
+            value: sourcegraph.com
+        headersSize: 308
+        httpVersion: HTTP/1.1
+        method: POST
+        postData:
+          mimeType: application/json
+          params: []
+          textJSON:
+            fast: true
+            maxTokensToSample: 400
+            messages:
+              - speaker: human
+                text: You are Cody, an AI coding assistant from Sourcegraph.
+              - speaker: assistant
+                text: I am Cody, an AI coding assistant from Sourcegraph.
+              - speaker: human
+                text: >-
+                  You are helping the user search over a codebase. List some
+                  filename fragments that would match files relevant to read to
+                  answer the user's query. Present your results in a *single*
+                  XML list in the following format: <keywords><keyword><value>a
+                  single keyword</value><variants>a space separated list of
+                  synonyms and variants of the keyword, including acronyms,
+                  abbreviations, and expansions</variants><weight>a numerical
+                  weight between 0.0 and 1.0 that indicates the importance of
+                  the keyword</weight></keyword></keywords>. Here is the user
+                  query: <userQuery>parse file with tree-sitter. follow these
+                  rules:
+
+                  *use the Google Go style guide
+
+                  *panic if parsing fails</userQuery>
+              - speaker: assistant
+            temperature: 0
+            topK: 1
+        queryString: []
+        url: https://sourcegraph.com/.api/completions/stream
+      response:
+        bodySize: 13956
+        content:
+          mimeType: text/event-stream
+          size: 13956
+          text: >+
+            event: completion
+
+            data: {"completion":"<keywords>\n<keyword>\n<value>tree-sitter</value>\n<variants>tree sitter treesitter tree-parser</variants>\n<weight>1.0</weight>\n</keyword>\n<keyword>\n<value>parse</value>\n<variants>parsing parser</variants>\n<weight>1.0</weight>\n</keyword>\n<keyword>\n<value>go</value>\n<variants>golang google-go</variants>\n<weight>0.8</weight>\n</keyword>\n<keyword>\n<value>style guide</value>\n<variants>styleguide style-guide</variants>\n<weight>0.7</weight>\n</keyword>\n<keyword>\n<value>panic</value>\n<variants>error handling exception</variants>\n<weight>0.9</weight>\n</keyword>\n</keywords>","stopReason":"end_turn"}
+
+
+            event: done
+
+            data: {}
+
+        cookies: []
+        headers:
+          - name: date
+            value: Fri, 13 Dec 2024 18:29:39 GMT
+          - name: content-type
+            value: text/event-stream
+          - name: transfer-encoding
+            value: chunked
+          - name: connection
+            value: keep-alive
+          - name: access-control-allow-credentials
+            value: "true"
+          - name: access-control-allow-origin
+            value: ""
+          - name: cache-control
+            value: no-cache
+          - name: observed-calculated-ip-from-forwarded-for
+            value: 73.170.29.73
+          - name: observed-x-forwarded-for
+            value: 73.170.29.73
+          - name: vary
+            value: Cookie,Accept-Encoding,Authorization,Cookie, Authorization,
+              X-Requested-With,Cookie
+          - name: x-content-type-options
+            value: nosniff
+          - name: x-frame-options
+            value: DENY
+          - name: x-xss-protection
+            value: 1; mode=block
+          - name: strict-transport-security
+            value: max-age=31536000; includeSubDomains; preload
+        headersSize: 1396
+        httpVersion: HTTP/1.1
+        redirectURL: ""
+        status: 200
+        statusText: OK
+      startedDateTime: 2024-12-13T18:29:38.400Z
+      time: 2462
+      timings:
+        blocked: -1
+        connect: -1
+        dns: -1
+        receive: 0
+        send: 0
+        ssl: -1
+        wait: 2462
+  pages: []
+  version: "1.2"

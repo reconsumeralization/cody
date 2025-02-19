@@ -1,0 +1,33 @@
+.editor {
+    position: relative;
+}
+
+/* ContentEditable */
+.content-editable {
+    border: 0;
+    display: block;
+    position: relative;
+    outline: 0;
+}
+
+/* Placeholder */
+.placeholder {
+    opacity: 0.6;
+    overflow: hidden;
+    position: absolute;
+    text-overflow: ellipsis;
+    top: 0;
+    left: 0;
+    right: 5px;
+    user-select: none;
+    white-space: nowrap;
+    display: inline-block;
+    pointer-events: none;
+}
+
+/* Theme */
+.theme-paragraph {
+    margin: 0;
+}
+
+

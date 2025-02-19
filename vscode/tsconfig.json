@@ -1,31 +1,47 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "sourceMap": true,
+    "allowJs": true,
+    "sourceMap": false, // sourcemaps come from esbuild/vite
     "rootDir": ".",
     "outDir": "dist/tsc",
     "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM"],
+    "target": "es2022",
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "es2021"],
+    "types": ["@testing-library/jest-dom"],
+    "paths": {
+      "@/*": ["./webviews/*"]
+    }
   },
   "include": [
     "src",
+    "src/commands/execute/cody.json",
     "test/fixtures",
     "playwright.config.ts",
+    "playwright.v2.config.ts",
     "test/e2e",
+    "test/e2e/utils/commands.json",
+    "e2e",
     "webviews",
-    "vite.config.ts",
+    "webviews/*.d.ts",
     "package.json",
-    ".storybook/*.ts",
-    "../lib/shared/src/telemetry/EventLogger.ts",
-    "test/completions/completions-dataset.ts",
+    "uninstall"
   ],
-  "exclude": ["scripts", "dist", "test/integration", "**/test-data"],
+  "exclude": [
+    "typehacks",
+    "scripts",
+    "dist",
+    "test/integration",
+    "**/test-data",
+    "webviews/vite.config.mts",
+    "**/*.mjs",
+  ],
   "references": [
     {
-      "path": "../lib/shared",
+      "path": "../lib/shared"
     },
     {
-      "path": "../lib/ui",
-    },
-  ],
+      "path": "../lib/prompt-editor"
+    }
+  ]
 }

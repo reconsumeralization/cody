@@ -1,4 +1,4 @@
-import * as vscode from 'vscode'
+import type * as vscode from 'vscode'
 
 import { FixupFile } from './FixupFile'
 
@@ -8,7 +8,7 @@ import { FixupFile } from './FixupFile'
  * (The vscode.TextDocument object is *not* durable in this way.)
  */
 export class FixupFileObserver {
-    private uriToFile_: Map<vscode.Uri, FixupFile> = new Map()
+    private uriToFile_: Map<string, FixupFile> = new Map()
 
     private n_ = 0 // cookie for generating new ids
 
@@ -21,15 +21,14 @@ export class FixupFileObserver {
      * document is renamed or deleted the FixupFile will be updated to provide
      * the current file URI. This creates a FixupFile if one does not exist and
      * starts tracking it; see maybeForUri.
-     *
      * @param uri the URI of the document to monitor.
      * @returns a new FixupFile representing the document.
      */
     public forUri(uri: vscode.Uri): FixupFile {
-        let result = this.uriToFile_.get(uri)
+        let result = this.uriToFile_.get(uri.toString())
         if (!result) {
             result = this.newFile(uri)
-            this.uriToFile_.set(uri, result)
+            this.uriToFile_.set(uri.toString(), result)
         }
         return result
     }
@@ -38,12 +37,16 @@ export class FixupFileObserver {
      * Gets the FixupFile for a given URI, if one exists. This operation is
      * fast; vscode event sinks which are provided a URI can use this to quickly
      * check whether the file may have fixups.
-     *
      * @param uri the URI of the document of interest.
      * @returns a FixupFile representing the document, if one exists.
      */
     public maybeForUri(uri: vscode.Uri): FixupFile | undefined {
-        return this.uriToFile_.get(uri)
+        return this.uriToFile_.get(uri.toString())
+    }
+
+    public replaceFile(uri: vscode.Uri, newUri: vscode.Uri): FixupFile {
+        this.uriToFile_.delete(uri.toString())
+        return this.forUri(newUri)
     }
 
     private newFile(uri: vscode.Uri): FixupFile {
@@ -54,10 +57,10 @@ export class FixupFileObserver {
         // TODO: There is only one delete event for a folder. Scan all of the
         // Uris to find sub-files and compute their new name.
         for (const uri of event.files) {
-            const file = this.uriToFile_.get(uri)
+            const file = this.uriToFile_.get(uri.toString())
             if (file) {
                 file.deleted_ = true
-                this.uriToFile_.delete(uri)
+                this.uriToFile_.delete(uri.toString())
             }
         }
     }
@@ -66,10 +69,10 @@ export class FixupFileObserver {
         // TODO: There is only one rename event for a folder. Scan all of the
         // Uris to find sub-files and compute their new name.
         for (const { oldUri, newUri } of event.files) {
-            const file = this.uriToFile_.get(oldUri)
+            const file = this.uriToFile_.get(oldUri.toString())
             if (file) {
-                this.uriToFile_.delete(oldUri)
-                this.uriToFile_.set(newUri, file)
+                this.uriToFile_.delete(oldUri.toString())
+                this.uriToFile_.set(newUri.toString(), file)
                 file.uri_ = newUri
             }
         }

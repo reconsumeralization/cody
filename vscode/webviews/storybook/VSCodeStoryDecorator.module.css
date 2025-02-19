@@ -1,93 +1,45 @@
-/**
-* CSS styles for storybooks to define variables and otherwise resemble the VS Code.
-*/
+:root {
+    --vscode-font-size: 13px;
+    --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Ubuntu', 'Droid Sans', 'Segoe WPC', 'Segoe UI', sans-serif;
+    --vscode-editor-font-family: 'Monaco', 'Consolas', monospace;
+}
 
-.container {
-    max-width: 600px;
-    margin: 2rem auto;
-    border: solid 1px #ffffff33;
-    font-size: var(--vscode-editor-font-size);
+body {
+    background-color: var(--vscode-editor-background);
+    font-size: var(--vscode-font-size);
     font-family: var(--vscode-font-family);
     color: var(--vscode-editor-foreground);
 }
 
 .container a {
-    color: var(--vscode-link-color);
+    color: var(--vscode-textLink-foreground);
+    text-decoration: none;
 }
 
-.test-dark-sidebar {
-    background-color: rgb(28, 33, 40);
+.container--webview {
+    padding: 0.5rem;
+    max-height: max(500px, calc(100vh - 6rem));
+    overflow: auto;
 }
 
-.test-dark-sidebar-bottom {
-    background: var(--vscode-sideBar-background);
-    height: 60vh;
-    display: flex;
-    align-items: end;
+.container--webview, .container--cell {
+    max-width: 80%;
+    margin: 2rem auto;
+    background-color: var(--vscode-editor-background);
+    border: solid 1px var(--vscode-tab-border);
 }
 
-/**
- * Define any --vscode-* CSS variables needed. These differ per theme and don't need to be
- * an exact match for any particular VS Code theme. They just need to be good enough.
- *
- * References:
- * https://sourcegraph.com/github.com/microsoft/vscode/-/blob/extensions/theme-defaults/themes/dark_modern.json
- * https://wiki.scn.sap.com/wiki/display/Img/Colour+List
- */
-
-:root {
-    --vscode-button-secondaryBackground: #3a3d41;
-    --vscode-button-secondaryForeground: #ffffff;
-    --vscode-button-secondaryHoverBackground: #45494e;
-    --vscode-editor-background: #151c28;
-    --vscode-editor-font-size: 13px;
-    --vscode-editor-foreground: var(--foreground);
-    --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Ubuntu', 'Droid Sans', 'Segoe WPC', 'Segoe UI', sans-serif;
-    --vscode-input-background: #313131;
-    --vscode-input-foreground: #cccccc;
-    --vscode-inputValidation-errorBackground: #ff000033;
-    --vscode-inputValidation-errorBorder: #ff0000;
-    --vscode-link-color: #7777ff;
-    --vscode-sideBarSectionHeader-border: #ffffff33;
-    --vscode-sideBarTitle-foreground: #ffffffcc;
-    --vscode-sideBar-background: #181818;
-    --vscode-sideBar-foreground: #cccccc;
-    --vscode-tab-activeForeground: #ffffff;
-    --vscode-tab-inactiveBackground: #00000033;
-    --vscode-tab-inactiveForeground: #ffffff77;
-    --vscode-list-warningForeground: #855600;
-    --vscode-problemsErrorIcon-foreground: #f48771;
-    --vscode-widget-shadow: rgba(0, 0, 0, 0.2);
+.container--sidebar {
+    max-width: 400px;
+    margin: 2rem auto;
+    background-color: var(--vscode-sideBar-background);
+    border: solid 1px var(--vscode-sideBar-border);
 }
 
-@font-face {
-	font-family: 'codicon';
-	font-display: block;
-	src: url('./codicon.ttf') format('truetype');
+.container-viewport {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
 }
-
-:global .codicon[class*='codicon-'] {
-	font: normal normal normal 16px/1 codicon;
-	display: inline-block;
-	text-decoration: none;
-	text-rendering: auto;
-	text-align: center;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	user-select: none;
-}
-
-:global .codicon-modifier-disabled {
-	opacity: 0.5;
-}
-
-:global .codicon-check::before { content: '\eab2' }
-:global .codicon-close::before { content: '\ea76' }
-:global .codicon-gear::before { content: '\eaf8' }
-:global .codicon-link::before { content: '\eb15' }
-:global .codicon-rocket::before { content: '\eb44' }
-:global .codicon-stop-circle::before { content: '\eba5' }
-:global .codicon-terminal::before { content: '\ea85' }
-:global .codicon-thumbsdown::before { content: '\eb6b' }
-:global .codicon-thumbsup::before { content: '\eb6c' }
-:global .codicon-trash::before { content: '\ea81' }

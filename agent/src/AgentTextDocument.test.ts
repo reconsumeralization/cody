@@ -1,20 +1,39 @@
-import assert from 'assert'
+import assert from 'node:assert'
 
 import { describe, it } from 'vitest'
 import * as vscode from 'vscode'
 
+import { testFileUri } from '@sourcegraph/cody-shared'
+
+import { ProtocolTextDocumentWithUri } from '../../vscode/src/jsonrpc/TextDocumentWithUri'
+
 import { AgentTextDocument } from './AgentTextDocument'
 
 describe('AgentTextDocument', () => {
-    const basic = new AgentTextDocument({ filePath: 'foo', content: 'a\nb\n' })
-    const basicCrlf = new AgentTextDocument({ filePath: 'foo', content: 'a\r\nb\r\n' })
-    const emptyLine = new AgentTextDocument({ filePath: 'foo', content: 'a\n\n' })
-    const noEndOfFileNewline = new AgentTextDocument({ filePath: 'foo', content: 'a\nb' })
-    const emptyFirstLine = new AgentTextDocument({ filePath: 'foo', content: '\nb' })
-    const emptyFirstLineCrlf = new AgentTextDocument({ filePath: 'foo', content: '\r\nb' })
-    const noIndentation = new AgentTextDocument({ filePath: 'foo', content: 'sss\n' })
-    const indentation = new AgentTextDocument({ filePath: 'foo', content: '  a\n' })
-    const indentationTab = new AgentTextDocument({ filePath: 'foo', content: '\t\tab\n' })
+    const uri = testFileUri('foo')
+    const basic = new AgentTextDocument(ProtocolTextDocumentWithUri.from(uri, { content: 'a\nb\n' }))
+    const basicCrlf = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: 'a\r\nb\r\n' })
+    )
+    const emptyLine = new AgentTextDocument(ProtocolTextDocumentWithUri.from(uri, { content: 'a\n\n' }))
+    const noEndOfFileNewline = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: 'a\nb' })
+    )
+    const emptyFirstLine = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: '\nb' })
+    )
+    const emptyFirstLineCrlf = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: '\r\nb' })
+    )
+    const noIndentation = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: 'sss\n' })
+    )
+    const indentation = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: '  a\n' })
+    )
+    const indentationTab = new AgentTextDocument(
+        ProtocolTextDocumentWithUri.from(uri, { content: '\t\tab\n' })
+    )
 
     it('getText(Range)', () => {
         assert.equal(basic.getText(new vscode.Range(0, 0, 0, 1)), 'a')
@@ -53,7 +72,10 @@ describe('AgentTextDocument', () => {
         assert.equal(emptyLine.getText(emptyLine.lineAt(1).rangeIncludingLineBreak), '\n')
 
         assert.equal(noEndOfFileNewline.getText(noEndOfFileNewline.lineAt(1).range), 'b')
-        assert.equal(noEndOfFileNewline.getText(noEndOfFileNewline.lineAt(1).rangeIncludingLineBreak), 'b')
+        assert.equal(
+            noEndOfFileNewline.getText(noEndOfFileNewline.lineAt(1).rangeIncludingLineBreak),
+            'b'
+        )
 
         assert.equal(emptyFirstLine.getText(emptyFirstLine.lineAt(0).range), '')
         assert.equal(emptyFirstLine.getText(emptyFirstLine.lineAt(0).rangeIncludingLineBreak), '\n')
@@ -61,14 +83,58 @@ describe('AgentTextDocument', () => {
         assert.equal(emptyFirstLine.getText(emptyFirstLine.lineAt(1).rangeIncludingLineBreak), 'b')
 
         assert.equal(emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(0).range), '')
-        assert.equal(emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(0).rangeIncludingLineBreak), '\r\n')
+        assert.equal(
+            emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(0).rangeIncludingLineBreak),
+            '\r\n'
+        )
         assert.equal(emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(1).range), 'b')
-        assert.equal(emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(1).rangeIncludingLineBreak), 'b')
+        assert.equal(
+            emptyFirstLineCrlf.getText(emptyFirstLineCrlf.lineAt(1).rangeIncludingLineBreak),
+            'b'
+        )
     })
 
     it('lineAt().firstNonWhitespaceCharacterIndex', () => {
         assert.equal(noIndentation.lineAt(0).firstNonWhitespaceCharacterIndex, 0)
         assert.equal(indentation.lineAt(0).firstNonWhitespaceCharacterIndex, 2)
         assert.equal(indentationTab.lineAt(0).firstNonWhitespaceCharacterIndex, 2)
+    })
+
+    describe('validatePosition', () => {
+        it('should return the same position if it is within the document range', () => {
+            const content = 'Hello\nWorld\n!'
+            const document = AgentTextDocument.from(vscode.Uri.parse('file:///test.txt'), content)
+            const position = new vscode.Position(1, 2)
+            const validatedPosition = document.validatePosition(position)
+            assert.strictEqual(validatedPosition.line, 1)
+            assert.strictEqual(validatedPosition.character, 2)
+        })
+
+        it('should adjust the line number if it is outside the document range', () => {
+            const content = 'Hello\nWorld\n!'
+            const document = AgentTextDocument.from(vscode.Uri.parse('file:///test.txt'), content)
+            const position = new vscode.Position(5, 2)
+            const validatedPosition = document.validatePosition(position)
+            assert.strictEqual(validatedPosition.line, 2)
+            assert.strictEqual(validatedPosition.character, 1)
+        })
+
+        it('should adjust the character position if it is outside the line range', () => {
+            const content = 'Hello\nWorld\n!'
+            const document = AgentTextDocument.from(vscode.Uri.parse('file:///test.txt'), content)
+            const position = new vscode.Position(1, 10)
+            const validatedPosition = document.validatePosition(position)
+            assert.strictEqual(validatedPosition.line, 1)
+            assert.strictEqual(validatedPosition.character, 5)
+        })
+
+        it('should handle negative line numbers and character positions', () => {
+            const content = 'Hello\nWorld\n!'
+            const document = AgentTextDocument.from(vscode.Uri.parse('file:///test.txt'), content)
+            const position = new vscode.Position(-2, -5)
+            const validatedPosition = document.validatePosition(position)
+            assert.strictEqual(validatedPosition.line, 0)
+            assert.strictEqual(validatedPosition.character, 0)
+        })
     })
 })

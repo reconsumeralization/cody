@@ -1,13 +1,14 @@
 import * as vscode from 'vscode'
 
-import { ConfigurationWithAccessToken } from '@sourcegraph/cody-shared/src/configuration'
+import type { AuthCredentials } from '@sourcegraph/cody-shared'
 
 import { localStorage } from '../services/LocalStorageProvider'
 
+import { telemetryRecorder } from '@sourcegraph/cody-shared'
 import { showActionNotification } from '.'
 
-export const showSetupNotification = async (config: ConfigurationWithAccessToken): Promise<void> => {
-    if (config.serverEndpoint && config.accessToken) {
+export const showSetupNotification = async (auth: AuthCredentials): Promise<void> => {
+    if (auth.serverEndpoint && auth.credentials) {
         // User has already attempted to configure Cody.
         // Regardless of if they are authenticated or not, we don't want to prompt them.
         return
@@ -21,20 +22,33 @@ export const showSetupNotification = async (config: ConfigurationWithAccessToken
     if (localStorage.get('extension.hasActivatedPreviously') !== 'true') {
         // User is on first activation, so has only just installed Cody.
         // Show Cody so that they can get started.
-        await vscode.commands.executeCommand('cody.focus')
+        await vscode.commands.executeCommand('cody.chat.focus')
         return
     }
 
+    telemetryRecorder.recordEvent('cody.signInNotification', 'shown')
+
     return showActionNotification({
-        message: 'Continue setting up Cody',
+        message: 'Sign in to Cody to get started',
         actions: [
             {
-                label: 'Setup',
-                onClick: () => vscode.commands.executeCommand('cody.focus'),
+                label: 'Sign In',
+                onClick: async () => {
+                    vscode.commands.executeCommand('cody.chat.focus')
+                    telemetryRecorder.recordEvent('cody.signInNotification.signInButton', 'clicked')
+                },
             },
             {
                 label: 'Do not show again',
-                onClick: () => localStorage.set('notification.setupDismissed', 'true'),
+                onClick: async () => {
+                    localStorage.set('notification.setupDismissed', 'true')
+                    telemetryRecorder.recordEvent('cody.signInNotification.doNotShow', 'clicked', {
+                        billingMetadata: {
+                            category: 'billable',
+                            product: 'cody',
+                        },
+                    })
+                },
             },
         ],
     })

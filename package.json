@@ -9,76 +9,82 @@
     "url": "https://github.com/sourcegraph/cody"
   },
   "engines": {
-    "node": "^v20.4.0",
+    "node": ">=18",
     "pnpm": "^8.6.7"
   },
   "browser": {
     "fs": false
   },
   "scripts": {
+    "agent": "pnpm -C agent agent",
     "build": "tsc --build",
     "watch": "tsc --build --watch",
-    "lint": "pnpm run lint:js && pnpm run lint:css",
-    "lint:js": "NODE_OPTIONS=--max-old-space-size=4096 eslint --quiet --cache '**/*.[tj]s?(x)'",
-    "lint:css": "stylelint --quiet --cache '**/*.css'",
-    "format": "prettier '**/{*.{js?(on),ts?(x),md,scss},.*.js?(on)}' --list-different --config .prettierrc.js --write",
-    "format:check": "prettier '**/{*.{js?(on),ts?(x),md,scss},.*.js?(on)}' --config .prettierrc.js --check --write=false",
+    "check": "pnpm run -s check:build && pnpm run -s biome && pnpm run -s check:css",
+    "check:css": "stylelint --quiet --cache '**/*.css'",
+    "check:build": "pnpm run -C vscode check:build",
+    "biome": "biome check --apply --error-on-warnings .",
+    "format": "pnpm biome",
     "test": "vitest",
     "test:unit": "vitest run",
     "test:integration": "pnpm -C vscode test:integration",
-    "test:e2e": "pnpm -C vscode test:e2e"
+    "test:e2e": "pnpm -C vscode test:e2e",
+    "test:local-e2e": "RUN_LOCAL_E2E_TESTS=true pnpm test agent/src/local-e2e/template.test.ts",
+    "generate-agent-kotlin-bindings": "./agent/scripts/generate-agent-kotlin-bindings.sh",
+    "update-agent-recordings": "pnpm build && CODY_KEEP_UNUSED_RECORDINGS=false CODY_RECORD_IF_MISSING=true vitest agent/src && cd jetbrains && ./gradlew :recordingIntegrationTest -PforceAgentBuild=true",
+    "update-agent-recordings-windows": "PowerShell -ExecutionPolicy Bypass -Command \"pnpm build; if ($?) { $Env:CODY_KEEP_UNUSED_RECORDINGS='false'; $Env:CODY_RECORD_IF_MISSING='true'; vitest agent/src; cd jetbrains; ./gradlew :recordingIntegrationTest -PforceAgentBuild=true }\"",
+    "update-rewrite-recordings": "rm -rf recordings && CODY_RECORD_IF_MISSING=true CODY_RECORDING_MODE=record vitest vscode/src/local-context/rewrite-keyword-query.test.ts",
+    "openctx:link": "cd ../openctx && pnpm -C lib/client link --global && pnpm -C lib/schema link --global && pnpm -C lib/protocol link --global && pnpm -C client/vscode-lib link --global && cd ../cody && pnpm link --global @openctx/client && pnpm link --global @openctx/schema &&  pnpm link --global @openctx/protocol && cd vscode && pnpm link --global @openctx/vscode-lib",
+    "openctx:unlink": "pnpm unlink --global @openctx/client && pnpm unlink --global @openctx/schema &&  pnpm unlink --global @openctx/protocol && cd vscode && pnpm unlink --global @openctx/vscode-lib"
   },
   "devDependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "^4.1.0",
-    "@sourcegraph/eslint-config": "0.35.0",
-    "@sourcegraph/prettierrc": "^3.0.3",
+    "@biomejs/biome": "1.7.2",
     "@sourcegraph/tsconfig": "^4.0.1",
-    "@storybook/addon-essentials": "^7.0.26",
-    "@storybook/addon-interactions": "^7.0.26",
-    "@storybook/addon-links": "^7.0.26",
-    "@storybook/blocks": "^7.0.26",
-    "@storybook/react": "^7.0.26",
-    "@storybook/react-vite": "^7.0.26",
-    "@storybook/testing-library": "^0.0.14-next.2",
-    "@types/node": "20.4.0",
-    "@types/prettier": "2.7.3",
-    "@types/react": "18.2.21",
-    "@types/react-dom": "18.2.7",
-    "@vitejs/plugin-react": "^4.0.2",
-    "esbuild": "^0.18.11",
-    "eslint": "^8.49.0",
-    "eslint-plugin-storybook": "^0.6.12",
+    "@storybook/addon-essentials": "^8.0.5",
+    "@storybook/react": "^8.0.5",
+    "@storybook/react-vite": "^8.0.5",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.2",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "20.12.7",
+    "@types/react": "18.2.79",
+    "@types/react-dom": "18.2.25",
+    "@vitejs/plugin-react": "^4.2.1",
+    "esbuild": "^0.18.20",
+    "fs-extra": "^11.2.0",
+    "happy-dom": "^14.3.10",
     "jsdom": "^22.1.0",
-    "prettier": "3.0.3",
-    "storybook": "^7.0.26",
-    "stylelint": "^15.10.3",
-    "stylelint-config-prettier": "^9.0.5",
+    "knip": "^5.27.4",
+    "storybook": "^8.0.5",
+    "stylelint": "^15.11.0",
     "stylelint-config-standard": "^34.0.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.1.6",
-    "vite": "^4.4.3",
-    "vitest": "^0.33.0"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
+    "@openctx/client": "^0.0.30",
+    "@opentelemetry/sdk-trace-web": "^1.18.1",
+    "@sourcegraph/telemetry": "^0.18.0",
+    "observable-fns": "^0.6.1",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "vscode-jsonrpc": "^8.2.0",
+    "web-tree-sitter": "^0.21.0",
+    "win-ca": "^3.5.1"
   },
   "packageManager": "pnpm@8.6.7",
   "resolutions": {
     "tslib": "2.1.0"
   },
   "pnpm": {
-    "packageExtensions": {
-      "@vscode/webview-ui-toolkit": {
-        "dependencies": {
-          "@microsoft/fast-web-utilities": "^6.0.0",
-          "tslib": "^2.1.0"
-        }
-      }
+    "overrides": {
+      "tslib": "2.1.0",
+      "@lexical/react": "https://storage.googleapis.com/sourcegraph-assets/npm/lexical-react-sourcegraph-fork-31065486.tgz"
     },
-    "neverBuiltDependencies": [
-      "deasync",
-      "playwright"
-    ]
+    "neverBuiltDependencies": ["deasync", "playwright"],
+    "patchedDependencies": {
+      "highlight.js@11.8.0": "patches/highlight.js@11.8.0.patch"
+    }
   }
 }

@@ -1,425 +1,251 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { VSCodeButton, VSCodeLink } from '@vscode/webview-ui-toolkit/react'
-import classNames from 'classnames'
+import type {
+    AuthenticatedAuthStatus,
+    ChatMessage,
+    Guardrails,
+    Model,
+    PromptString,
+} from '@sourcegraph/cody-shared'
+import { CodyIDE } from '@sourcegraph/cody-shared'
+import { Transcript, focusLastHumanMessageEditor } from './chat/Transcript'
+import type { VSCodeWrapper } from './utils/VSCodeApi'
 
-import { ChatContextStatus } from '@sourcegraph/cody-shared/src/chat/context'
-import { CodyPrompt } from '@sourcegraph/cody-shared/src/chat/prompts'
-import { ChatMessage } from '@sourcegraph/cody-shared/src/chat/transcript/messages'
-import { isDotCom, isLocalApp } from '@sourcegraph/cody-shared/src/sourcegraph-api/environments'
-import { TelemetryService } from '@sourcegraph/cody-shared/src/telemetry'
-import {
-    ChatButtonProps,
-    Chat as ChatUI,
-    ChatUISubmitButtonProps,
-    ChatUISuggestionButtonProps,
-    ChatUITextAreaProps,
-    EditButtonProps,
-    FeedbackButtonsProps,
-} from '@sourcegraph/cody-ui/src/Chat'
-import { SubmitSvg } from '@sourcegraph/cody-ui/src/utils/icons'
-
-import { CODY_FEEDBACK_URL, OnboardingExperimentArm } from '../src/chat/protocol'
-
-import { ChatCommandsComponent } from './ChatCommands'
-import { ChatInputContextSimplified } from './ChatInputContextSimplified'
-import { FileLink } from './FileLink'
-import { OnboardingPopupProps } from './Popups/OnboardingExperimentPopups'
-import { SymbolLink } from './SymbolLink'
-import { VSCodeWrapper } from './utils/VSCodeApi'
-
+import type { Context } from '@opentelemetry/api'
 import styles from './Chat.module.css'
-
+import { WelcomeMessage } from './chat/components/WelcomeMessage'
+import { WelcomeNotice } from './chat/components/WelcomeNotice'
+import { ScrollDown } from './components/ScrollDown'
+import type { View } from './tabs'
+import { SpanManager } from './utils/spanManager'
+import { getTraceparentFromSpanContext } from './utils/telemetry'
+import { useUserAccountInfo } from './utils/useConfig'
 interface ChatboxProps {
+    chatEnabled: boolean
     messageInProgress: ChatMessage | null
-    messageBeingEdited: boolean
-    setMessageBeingEdited: (input: boolean) => void
     transcript: ChatMessage[]
-    contextStatus: ChatContextStatus | null
-    formInput: string
-    setFormInput: (input: string) => void
-    inputHistory: string[]
-    setInputHistory: (history: string[]) => void
-    vscodeAPI: VSCodeWrapper
-    telemetryService: TelemetryService
-    suggestions?: string[]
-    setSuggestions?: (suggestions: undefined | string[]) => void
-    chatCommands?: [string, CodyPrompt][]
-    isTranscriptError: boolean
-    applessOnboarding: {
-        arm: OnboardingExperimentArm
-        endpoint: string | null
-        embeddingsEndpoint?: string
-        props: { isAppInstalled: boolean; onboardingPopupProps: OnboardingPopupProps }
-    }
+    models: Model[]
+    vscodeAPI: Pick<VSCodeWrapper, 'postMessage' | 'onMessage'>
+    guardrails?: Guardrails
+    scrollableParent?: HTMLElement | null
+    showWelcomeMessage?: boolean
+    showIDESnippetActions?: boolean
+    setView: (view: View) => void
+    smartApplyEnabled?: boolean
+    isPromptsV2Enabled?: boolean
+    isWorkspacesUpgradeCtaEnabled?: boolean
 }
 
 export const Chat: React.FunctionComponent<React.PropsWithChildren<ChatboxProps>> = ({
     messageInProgress,
-    messageBeingEdited,
-    setMessageBeingEdited,
     transcript,
-    contextStatus,
-    formInput,
-    setFormInput,
-    inputHistory,
-    setInputHistory,
+    models,
     vscodeAPI,
-    telemetryService,
-    suggestions,
-    setSuggestions,
-    chatCommands,
-    isTranscriptError,
-    applessOnboarding,
+    chatEnabled = true,
+    guardrails,
+    scrollableParent,
+    showWelcomeMessage = true,
+    showIDESnippetActions = true,
+    setView,
+    smartApplyEnabled,
+    isPromptsV2Enabled,
+    isWorkspacesUpgradeCtaEnabled,
 }) => {
-    const [abortMessageInProgressInternal, setAbortMessageInProgress] = useState<() => void>(() => () => undefined)
+    const transcriptRef = useRef(transcript)
+    transcriptRef.current = transcript
 
-    const abortMessageInProgress = useCallback(() => {
-        abortMessageInProgressInternal()
-        vscodeAPI.postMessage({ command: 'abort' })
-        setAbortMessageInProgress(() => () => undefined)
-    }, [abortMessageInProgressInternal, vscodeAPI])
+    const userInfo = useUserAccountInfo()
 
-    const onSubmit = useCallback(
-        (text: string, submitType: 'user' | 'suggestion' | 'example') => {
-            vscodeAPI.postMessage({ command: 'submit', text, submitType })
-        },
-        [vscodeAPI]
-    )
-
-    const onEditBtnClick = useCallback(
-        (text: string) => {
-            vscodeAPI.postMessage({ command: 'edit', text })
-        },
-        [vscodeAPI]
-    )
-
-    const onFeedbackBtnClick = useCallback(
-        (text: string) => {
-            telemetryService.log(`CodyVSCodeExtension:codyFeedback:${text}`, {
-                value: text,
-                lastChatUsedEmbeddings: Boolean(
-                    transcript.at(-1)?.contextFiles?.some(file => file.source === 'embeddings')
-                ),
-            })
-        },
-        [telemetryService, transcript]
-    )
-
-    const onCopyBtnClick = useCallback(
-        (text: string, eventType: 'Button' | 'Keydown' = 'Button', source?: string) => {
+    const copyButtonOnSubmit = useCallback(
+        (text: string, eventType: 'Button' | 'Keydown' = 'Button') => {
             const op = 'copy'
             // remove the additional /n added by the text area at the end of the text
+
             const code = eventType === 'Button' ? text.replace(/\n$/, '') : text
             // Log the event type and text to telemetry in chat view
-            vscodeAPI.postMessage({ command: op, eventType, text: code, source })
+
+            vscodeAPI.postMessage({
+                command: op,
+                eventType,
+                text: code,
+            })
         },
         [vscodeAPI]
     )
 
-    const onInsertBtnClick = useCallback(
-        (text: string, newFile = false, source?: string) => {
-            const op = newFile ? 'newFile' : 'insert'
-            const eventType = 'Button'
-            // remove the additional /n added by the text area at the end of the text
-            const code = eventType === 'Button' ? text.replace(/\n$/, '') : text
-            // Log the event type and text to telemetry in chat view
-            vscodeAPI.postMessage({ command: op, eventType, text: code, source })
-        },
-        [vscodeAPI]
-    )
+    const insertButtonOnSubmit = useMemo(() => {
+        if (showIDESnippetActions) {
+            return (text: string, newFile = false) => {
+                const op = newFile ? 'newFile' : 'insert'
+                // Log the event type and text to telemetry in chat view
 
-    const useSimplifiedAppOnboarding =
-        applessOnboarding.arm === OnboardingExperimentArm.Simplified &&
-        applessOnboarding.endpoint &&
-        (isDotCom(applessOnboarding.endpoint) || isLocalApp(applessOnboarding.endpoint))
-
-    return (
-        <ChatUI
-            messageInProgress={messageInProgress}
-            messageBeingEdited={messageBeingEdited}
-            setMessageBeingEdited={setMessageBeingEdited}
-            transcript={transcript}
-            contextStatus={contextStatus}
-            formInput={formInput}
-            setFormInput={setFormInput}
-            inputHistory={inputHistory}
-            setInputHistory={setInputHistory}
-            onSubmit={onSubmit}
-            textAreaComponent={TextArea}
-            submitButtonComponent={SubmitButton}
-            suggestionButtonComponent={SuggestionButton}
-            fileLinkComponent={FileLink}
-            symbolLinkComponent={SymbolLink}
-            className={styles.innerContainer}
-            codeBlocksCopyButtonClassName={styles.codeBlocksCopyButton}
-            codeBlocksInsertButtonClassName={styles.codeBlocksInsertButton}
-            transcriptItemClassName={styles.transcriptItem}
-            humanTranscriptItemClassName={styles.humanTranscriptItem}
-            transcriptItemParticipantClassName={styles.transcriptItemParticipant}
-            transcriptActionClassName={styles.transcriptAction}
-            inputRowClassName={styles.inputRow}
-            chatInputContextClassName={styles.chatInputContext}
-            chatInputClassName={styles.chatInputClassName}
-            EditButtonContainer={EditButton}
-            editButtonOnSubmit={onEditBtnClick}
-            FeedbackButtonsContainer={FeedbackButtons}
-            feedbackButtonsOnSubmit={onFeedbackBtnClick}
-            copyButtonOnSubmit={onCopyBtnClick}
-            insertButtonOnSubmit={onInsertBtnClick}
-            suggestions={suggestions}
-            setSuggestions={setSuggestions}
-            abortMessageInProgressComponent={AbortMessageInProgress}
-            onAbortMessageInProgress={abortMessageInProgress}
-            isTranscriptError={isTranscriptError}
-            // TODO: We should fetch this from the server and pass a pretty component
-            // down here to render cody is disabled on the instance nicely.
-            isCodyEnabled={true}
-            codyNotEnabledNotice={undefined}
-            afterMarkdown={welcomeMessageMarkdown}
-            helpMarkdown=""
-            ChatButtonComponent={ChatButton}
-            chatCommands={chatCommands}
-            filterChatCommands={filterChatCommands}
-            ChatCommandsComponent={ChatCommandsComponent}
-            contextStatusComponent={useSimplifiedAppOnboarding ? ChatInputContextSimplified : undefined}
-            contextStatusComponentProps={
-                useSimplifiedAppOnboarding
-                    ? {
-                          contextStatus,
-                          ...applessOnboarding.props,
-                      }
-                    : undefined
-            }
-        />
-    )
-}
-
-interface AbortMessageInProgressProps {
-    onAbortMessageInProgress: () => void
-}
-
-const AbortMessageInProgress: React.FunctionComponent<AbortMessageInProgressProps> = ({ onAbortMessageInProgress }) => (
-    <div className={classNames(styles.stopGeneratingButtonContainer)}>
-        <VSCodeButton
-            className={classNames(styles.stopGeneratingButton)}
-            onClick={onAbortMessageInProgress}
-            appearance="secondary"
-        >
-            <i className="codicon codicon-stop-circle" /> Stop generating
-        </VSCodeButton>
-    </div>
-)
-
-const ChatButton: React.FunctionComponent<ChatButtonProps> = ({ label, action, onClick }) => (
-    <VSCodeButton type="button" onClick={() => onClick(action)} className={styles.chatButton}>
-        {label}
-    </VSCodeButton>
-)
-
-const TextArea: React.FunctionComponent<ChatUITextAreaProps> = ({
-    className,
-    autoFocus,
-    value,
-    setValue,
-    required,
-    onInput,
-    onKeyDown,
-}) => {
-    const inputRef = useRef<HTMLTextAreaElement>(null)
-    const placeholder = "Ask a question or type '/' for commands"
-
-    // Focus the textarea when the webview gains focus (unless there is text selected). This makes
-    // it so that the user can immediately start typing to Cody after invoking `Cody: Focus on Chat
-    // View` with the keyboard.
-    useEffect(() => {
-        const handleFocus = (): void => {
-            if (document.getSelection()?.isCollapsed) {
-                inputRef.current?.focus()
+                vscodeAPI.postMessage({
+                    command: op,
+                    // remove the additional /n added by the text area at the end of the text
+                    text: text.replace(/\n$/, ''),
+                })
             }
         }
-        window.addEventListener('focus', handleFocus)
+
+        return
+    }, [vscodeAPI, showIDESnippetActions])
+
+    const smartApply = useMemo(() => {
+        if (!showIDESnippetActions) {
+            return
+        }
+
+        return {
+            onSubmit: (
+                id: string,
+                text: string,
+                instruction?: PromptString,
+                fileName?: string
+            ): void => {
+                const spanManager = new SpanManager('cody-webview')
+                const span = spanManager.startSpan('smartApplySubmit', {
+                    attributes: {
+                        sampled: true,
+                        'smartApply.id': id,
+                    },
+                })
+                const traceparent = getTraceparentFromSpanContext(span.spanContext())
+
+                vscodeAPI.postMessage({
+                    command: 'smartApplySubmit',
+                    id,
+                    instruction: instruction?.toString(),
+                    // remove the additional /n added by the text area at the end of the text
+                    code: text.replace(/\n$/, ''),
+                    fileName,
+                    traceparent,
+                })
+                span.end()
+            },
+            onAccept: (id: string) => {
+                vscodeAPI.postMessage({
+                    command: 'smartApplyAccept',
+                    id,
+                })
+            },
+            onReject: (id: string) => {
+                vscodeAPI.postMessage({
+                    command: 'smartApplyReject',
+                    id,
+                })
+            },
+        }
+    }, [vscodeAPI, showIDESnippetActions])
+
+    const postMessage = useCallback<ApiPostMessage>(msg => vscodeAPI.postMessage(msg), [vscodeAPI])
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            // Esc to abort the message in progress.
+            if (event.key === 'Escape' && messageInProgress) {
+                vscodeAPI.postMessage({ command: 'abort' })
+            }
+
+            // NOTE(sqs): I have a keybinding on my Linux machine Super+o to switch VS Code editor
+            // groups. This makes it so that that keybinding does not also input the letter 'o'.
+            // This is a workaround for (arguably) a VS Code issue.
+            if (event.metaKey && event.key === 'o') {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
         return () => {
-            window.removeEventListener('focus', handleFocus)
+            window.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [vscodeAPI, messageInProgress])
+
+    // Re-focus the input when the webview (re)gains focus if it was focused before the webview lost
+    // focus. This makes it so that the user can easily switch back to the Cody view and keep
+    // typing.
+    useEffect(() => {
+        const onFocus = (): void => {
+            // This works because for some reason Electron maintains the Selection but not the
+            // focus.
+            const sel = window.getSelection()
+            const focusNode = sel?.focusNode
+            const focusElement = focusNode instanceof Element ? focusNode : focusNode?.parentElement
+            const focusEditor = focusElement?.closest<HTMLElement>('[data-lexical-editor="true"]')
+            if (focusEditor) {
+                focusEditor.focus({ preventScroll: true })
+            }
+        }
+        window.addEventListener('focus', onFocus)
+        return () => {
+            window.removeEventListener('focus', onFocus)
         }
     }, [])
 
-    const onTextAreaKeyDown = useCallback(
-        (event: React.KeyboardEvent<HTMLElement>): void => {
-            onKeyDown?.(event, inputRef.current?.selectionStart ?? null)
-        },
-        [inputRef, onKeyDown]
-    )
-
-    const onTextAreaCommandButtonClick = useCallback((): void => {
-        if (setValue && inputRef?.current?.value === '') {
-            setValue('/')
-            inputRef.current?.focus()
+    const handleScrollDownClick = useCallback(() => {
+        // Scroll to the bottom instead of focus input for unsent message
+        // it's possible that we just want to scroll to the bottom in case of
+        // welcome message screen
+        if (transcript.length === 0) {
+            return
         }
-    }, [inputRef, setValue])
+
+        focusLastHumanMessageEditor()
+    }, [transcript])
+    const [activeChatContext, setActiveChatContext] = useState<Context>()
 
     return (
-        <div className={classNames(styles.chatInputContainer)} data-value={value || placeholder}>
-            <textarea
-                className={classNames(styles.chatInput, className)}
-                rows={1}
-                ref={inputRef}
-                value={value}
-                required={required}
-                onInput={onInput}
-                onKeyDown={onTextAreaKeyDown}
-                placeholder={placeholder}
-                aria-label="Chat message"
-                title="" // Set to blank to avoid HTML5 error tooltip "Please fill in this field"
+        <>
+            {!chatEnabled && (
+                <div className={styles.chatDisabled}>
+                    Cody chat is disabled by your Sourcegraph site administrator
+                </div>
+            )}
+            <Transcript
+                activeChatContext={activeChatContext}
+                setActiveChatContext={setActiveChatContext}
+                transcript={transcript}
+                models={models}
+                messageInProgress={messageInProgress}
+                copyButtonOnSubmit={copyButtonOnSubmit}
+                insertButtonOnSubmit={insertButtonOnSubmit}
+                smartApply={smartApply}
+                userInfo={userInfo}
+                chatEnabled={chatEnabled}
+                postMessage={postMessage}
+                guardrails={guardrails}
+                smartApplyEnabled={smartApplyEnabled}
             />
-            <div className={styles.chatInputActions}>
-                <VSCodeButton
-                    appearance="icon"
-                    type="button"
-                    className={styles.chatInputCommandButton}
-                    onClick={onTextAreaCommandButtonClick}
-                    disabled={!!value}
-                    title="Commands"
-                >
-                    <i className="codicon codicon-terminal" />
-                </VSCodeButton>
-            </div>
-        </div>
-    )
-}
-
-const SubmitButton: React.FunctionComponent<ChatUISubmitButtonProps> = ({ className, disabled, onClick }) => (
-    <VSCodeButton
-        className={classNames(styles.submitButton, className)}
-        appearance="icon"
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        title="Send Message"
-    >
-        <SubmitSvg />
-    </VSCodeButton>
-)
-
-const SuggestionButton: React.FunctionComponent<ChatUISuggestionButtonProps> = ({ suggestion, onClick }) => (
-    <button className={styles.suggestionButton} type="button" onClick={onClick}>
-        {suggestion}
-    </button>
-)
-
-const EditButton: React.FunctionComponent<EditButtonProps> = ({
-    className,
-    messageBeingEdited,
-    setMessageBeingEdited,
-}) => (
-    <div className={className}>
-        <VSCodeButton
-            className={classNames(styles.editButton)}
-            appearance="icon"
-            type="button"
-            onClick={() => setMessageBeingEdited(!messageBeingEdited)}
-        >
-            <i className={messageBeingEdited ? 'codicon codicon-close' : 'codicon codicon-edit'} />
-        </VSCodeButton>
-    </div>
-)
-
-const FeedbackButtons: React.FunctionComponent<FeedbackButtonsProps> = ({ className, feedbackButtonsOnSubmit }) => {
-    const [feedbackSubmitted, setFeedbackSubmitted] = useState('')
-
-    const onFeedbackBtnSubmit = useCallback(
-        (text: string) => {
-            feedbackButtonsOnSubmit(text)
-            setFeedbackSubmitted(text)
-        },
-        [feedbackButtonsOnSubmit]
-    )
-
-    return (
-        <div className={classNames(styles.feedbackButtons, className)}>
-            {!feedbackSubmitted && (
+            {transcript.length === 0 && showWelcomeMessage && (
                 <>
-                    <VSCodeButton
-                        className={classNames(styles.feedbackButton)}
-                        appearance="icon"
-                        type="button"
-                        onClick={() => onFeedbackBtnSubmit('thumbsUp')}
-                    >
-                        <i className="codicon codicon-thumbsup" />
-                    </VSCodeButton>
-                    <VSCodeButton
-                        className={classNames(styles.feedbackButton)}
-                        appearance="icon"
-                        type="button"
-                        onClick={() => onFeedbackBtnSubmit('thumbsDown')}
-                    >
-                        <i className="codicon codicon-thumbsdown" />
-                    </VSCodeButton>
+                    <WelcomeMessage
+                        IDE={userInfo.IDE}
+                        setView={setView}
+                        isPromptsV2Enabled={isPromptsV2Enabled}
+                    />
+                    {isWorkspacesUpgradeCtaEnabled && userInfo.IDE !== CodyIDE.Web && (
+                        <div className="tw-absolute tw-bottom-0 tw-left-1/2 tw-transform tw--translate-x-1/2 tw-w-[95%] tw-z-1 tw-mb-4 tw-max-h-1/2">
+                            <WelcomeNotice />
+                        </div>
+                    )}
                 </>
             )}
-            {feedbackSubmitted === 'thumbsUp' && (
-                <VSCodeButton
-                    className={classNames(styles.feedbackButton)}
-                    appearance="icon"
-                    type="button"
-                    disabled={true}
-                    title="Thanks for your feedback"
-                >
-                    <i className="codicon codicon-thumbsup" />
-                    <i className="codicon codicon-check" />
-                </VSCodeButton>
+
+            {scrollableParent && (
+                <ScrollDown scrollableParent={scrollableParent} onClick={handleScrollDownClick} />
             )}
-            {feedbackSubmitted === 'thumbsDown' && (
-                <span className={styles.thumbsDownFeedbackContainer}>
-                    <VSCodeButton
-                        className={classNames(styles.feedbackButton)}
-                        appearance="icon"
-                        type="button"
-                        disabled={true}
-                        title="Thanks for your feedback"
-                    >
-                        <i className="codicon codicon-thumbsdown" />
-                        <i className="codicon codicon-check" />
-                    </VSCodeButton>
-                    <VSCodeLink
-                        href={String(CODY_FEEDBACK_URL)}
-                        target="_blank"
-                        title="Help improve Cody by providing more feedback about the quality of this response"
-                    >
-                        Give Feedback
-                    </VSCodeLink>
-                </span>
-            )}
-        </div>
+        </>
     )
 }
 
-const welcomeMessageMarkdown = `Start writing code and I’ll autocomplete lines and entire functions for you.
-
-You can ask me to explain, document and edit code using the [Cody Commands](command:cody.action.commands.menu) action (⌥C), or by right-clicking on code and using the “Cody” menu.
-
-See the [Getting Started](command:cody.welcome) guide for more tips and tricks.
-`
-
-const slashCommandRegex = /^\/[A-Za-z]+/
-function isSlashCommand(value: string): boolean {
-    return slashCommandRegex.test(value)
+export interface UserAccountInfo {
+    isDotComUser: boolean
+    isCodyProUser: boolean
+    user: Pick<
+        AuthenticatedAuthStatus,
+        'username' | 'displayName' | 'avatarURL' | 'endpoint' | 'primaryEmail' | 'organizations'
+    >
+    IDE: CodyIDE
 }
 
-function normalize(input: string): string {
-    return input.trim().toLowerCase()
-}
-
-function filterChatCommands(chatCommands: [string, CodyPrompt][], query: string): [string, CodyPrompt][] {
-    const normalizedQuery = normalize(query)
-
-    if (!isSlashCommand(normalizedQuery)) {
-        return []
-    }
-
-    const [slashCommand] = normalizedQuery.split(' ')
-    const matchingCommands: [string, CodyPrompt][] = chatCommands.filter(
-        ([key, command]) => key === 'separator' || command.slashCommand?.toLowerCase().startsWith(slashCommand)
-    )
-    return matchingCommands
-}
+export type ApiPostMessage = (message: any) => void
