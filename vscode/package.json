@@ -1519,7 +1519,7 @@
     "vite-plugin-svgr": "^4.2.0",
     "vscode-jsonrpc": "^8.2.0",
     "vscode-languageserver-protocol": "^3.17.5",
-    "yaml": "^2.3.4",
+    "yaml": "^2.8.3",
     "zod": "^3.23.8"
   }
 }
