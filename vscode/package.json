@@ -1391,7 +1391,7 @@
     "@vscode/codicons": "^0.0.35",
     "agent-base": "^7.1.1",
     "async-mutex": "^0.4.0",
-    "axios": "^1.3.6",
+    "axios": "^1.15.0",
     "canvaskit-wasm": "^0.39.1",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
