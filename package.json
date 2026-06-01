@@ -65,7 +65,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.2",
-    "vitest": "^2.0.5"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "@openctx/client": "^0.0.30",
