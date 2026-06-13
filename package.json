@@ -54,7 +54,7 @@
     "@types/ws": "^8.5.10",
     "@vitejs/plugin-react": "^4.2.1",
     "dedent": "^1.5.1",
-    "esbuild": "^0.18.20",
+    "esbuild": "^0.28.1",
     "fs-extra": "^11.2.0",
     "happy-dom": "^14.3.10",
     "jsdom": "^22.1.0",
