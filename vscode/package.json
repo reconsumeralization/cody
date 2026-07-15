@@ -1351,7 +1351,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
-    "@modelcontextprotocol/sdk": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@openctx/provider-linear-issues": "^0.0.9",
     "@openctx/vscode-lib": "^0.0.26",
     "@opentelemetry/api": "^1.7.0",
