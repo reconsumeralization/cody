@@ -38,7 +38,7 @@
     "idb": "^8.0.0",
     "lodash": "4.17.21",
     "path-browserify": "^1.0.1",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.18",
     "postcss-mixins": "^10.0.1",
     "postcss-nested": "^6.0.1",
     "stream-browserify": "^3.0.0",
