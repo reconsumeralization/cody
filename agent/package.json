@@ -106,6 +106,6 @@
     "yaml": "^2.3.4"
   },
   "dependencies": {
-    "csv-parse": "^5.5.6"
+    "csv-parse": "^7.0.2"
   }
 }
